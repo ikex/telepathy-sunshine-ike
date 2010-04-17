@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+
+include /usr/share/cdbs/1/class/autotools.mk
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/rules/simple-patchsys.mk
+
+# List any files which are not installed
+include /usr/share/cdbs/1/rules/utils.mk
+common-binary-post-install-arch:: list-missing
+
+#%:
+#	dh  $@
+prefix='/usr'
+# Upstream releases are going to move CMs to libexecdir soon...
+DEB_CONFIGURE_LIBEXECDIR := "\$${prefix}/lib/telepathy"
+# but haven't done so yet, so let's give Debian a head start
+#DEB_CONFIGURE_NORMAL_ARGS := --libexecdir=$(DEB_CONFIGURE_LIBEXECDIR) --disable-silent-rules
+DEB_CONFIGURE_EXTRA_FLAGS := --bindir=$(DEB_CONFIGURE_LIBEXECDIR) --disable-silent-rules
+
+
+include $(CURDIR)/debian/update-patches.mk

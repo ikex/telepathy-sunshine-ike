@@ -1,0 +1,23 @@
+Source: telepathy-sunshine
+Section: net
+Priority: optional
+Maintainer: Krzysztof Klinikowski <kkszysiu@gmail.com>
+Build-Depends: debhelper (>= 7),
+                 cdbs,
+                 python-dbus,
+                 python-gobject,
+                 python-telepathy (>= 0.15.11),
+                 libdbus-glib-1-dev (>= 0.51),
+                 python-twisted (>= 0.8.0),
+                 python
+Standards-Version: 3.8.3
+Vcs-Git: git://git.collabora.co.uk/git/telepathy-sunshine.git
+Vcs-Browser: http://git.collabora.co.uk/?p=telepathy-sunshine.git
+Homepage: git://git.collabora.co.uk/git/telepathy-sunshine.git
+
+Package: telepathy-sunshine
+Architecture: any
+Provides: telepathy-connection-manager
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Gadu Gadu connection manager for Telepathy
+ A full-featured Gadu Gadu connection manager for the Telepathy project.
