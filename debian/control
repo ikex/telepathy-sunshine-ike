@@ -11,9 +11,9 @@ Build-Depends: debhelper (>= 7),
                  python-twisted (>= 0.8.0),
                  python
 Standards-Version: 3.8.3
-Vcs-Git: git://git.collabora.co.uk/git/telepathy-sunshine.git
-Vcs-Browser: http://git.collabora.co.uk/?p=telepathy-sunshine.git
-Homepage: git://git.collabora.co.uk/git/telepathy-sunshine.git
+Vcs-Git: git://git.debian.org/pkg-telepathy/telepathy-sunshine.git
+Vcs-Browser: http://git.debian.org/?p=pkg-telepathy/telepathy-sunshine.git
+Homepage: http://telepathy.freedesktop.org/wiki/
 
 Package: telepathy-sunshine
 Architecture: any
