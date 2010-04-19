@@ -1,4 +1,10 @@
-telepathy-sunshine (0.1.7ppa12) karmic; urgency=low
+telepathy-sunshine (0.1.7-2) experimental; urgency=low
+
+  * Initial release
+
+ -- Krzysztof Klinikowski <kkszysiu@gmail.com>  Mon, 05 Apr 2010 00:50:09 +0200
+
+telepathy-sunshine (0.1.7-1) unstable; urgency=low
 
   * Initial release
 
