@@ -1,7 +1,10 @@
 Source: telepathy-sunshine
 Section: net
 Priority: optional
-Maintainer: Krzysztof Klinikowski <kkszysiu@gmail.com>
+XS-Python-Version: >= 2.6
+Maintainer: Debian Telepathy maintainers <pkg-telepathy-maintainers@lists.alioth.debian.org>
+Uploaders: Krzysztof Klinikowski <kkszysiu@gmail.com>,
+		   Sjoerd Simons <sjoerd@debian.org>
 Build-Depends: debhelper (>= 7),
                  cdbs,
                  python-dbus,
@@ -16,8 +19,11 @@ Vcs-Browser: http://git.debian.org/?p=pkg-telepathy/telepathy-sunshine.git
 Homepage: http://telepathy.freedesktop.org/wiki/
 
 Package: telepathy-sunshine
-Architecture: any
+Architecture: all
 Provides: telepathy-connection-manager
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, python-dbus, python-gobject, python-telepathy (>= 0.15.17), python-twisted (>= 0.8.2)
+Conflicts: empathy (<< 2.30)
+XB-Python-Version: ${python:Versions}
+Provides: telepathy-connection-manager
 Description: Gadu Gadu connection manager for Telepathy
  A full-featured Gadu Gadu connection manager for the Telepathy project.
