@@ -24,6 +24,5 @@ Provides: telepathy-connection-manager
 Depends: ${shlibs:Depends}, ${misc:Depends}, python-dbus, python-gobject, python-telepathy (>= 0.15.17), python-twisted (>= 0.8.2)
 Conflicts: empathy (<< 2.30)
 XB-Python-Version: ${python:Versions}
-Provides: telepathy-connection-manager
 Description: Gadu Gadu connection manager for Telepathy
  A full-featured Gadu Gadu connection manager for the Telepathy project.
