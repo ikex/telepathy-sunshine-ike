@@ -121,6 +121,11 @@ class GaduProfile(object):
             raise RuntimeError("You need to be connected, to send messages.")
         self.__connection.sendConfMessage(uin, html_message + '\0', plain_message + '\0', recipients)
 
+    def sendTypingNotify(self, uin, type):
+        if not self.connected:
+            raise RuntimeError("You need to be connected, to send notifies.")
+        self.__connection.sendTypingNotify(uin, type)
+
     def importContacts(self, callback):
         """Issue an import request. This is non-blocking and returns no data."""
         if not self.connected:
@@ -190,6 +195,9 @@ class GaduProfile(object):
 
     def onStatusNoticiesRecv(self):
         """Called when a contact list notify was sent"""
+        pass
+    
+    def onTypingNotification(self, data):
         pass
 
     def onXmlAction(self, data):

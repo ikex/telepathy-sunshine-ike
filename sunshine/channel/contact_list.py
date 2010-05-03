@@ -124,9 +124,9 @@ class SunshineListChannel(
         telepathy.server.ChannelInterfaceGroup):
     "Abstract Contact List channels"
 
-    def __init__(self, connection, manager, props):
+    def __init__(self, connection, manager, props, object_path=None):
         self._conn_ref = weakref.ref(connection)
-        telepathy.server.ChannelTypeContactList.__init__(self, connection, manager, props)
+        telepathy.server.ChannelTypeContactList.__init__(self, connection, manager, props, object_path=None)
         telepathy.server.ChannelInterfaceGroup.__init__(self)
         self._populate(connection)
 
@@ -179,9 +179,14 @@ class SunshineListChannel(
             if ad or lp or rp:
                 handle = SunshineHandleFactory(self._conn_ref(), 'contact',
                         contact.uin, None)
+                #capabilities
+                self._conn_ref().contactAdded(handle)
                 if ad: added.add(handle)
                 if lp: local_pending.add(handle)
                 if rp: remote_pending.add(handle)
+        #self._conn_ref()._populate_capabilities()
+        #capabilities for self handle
+        self._conn_ref().contactAdded(self._conn_ref().GetSelfHandle())
         self.MembersChanged('', added, (), local_pending, remote_pending, 0,
                 telepathy.CHANNEL_GROUP_CHANGE_REASON_NONE)
 
@@ -229,9 +234,10 @@ class SunshineSubscribeListChannel(SunshineListChannel):
             #and group
             if self._conn_ref().pending_contacts_to_group.has_key(handle.name):
                 logger.info("Trying to add temporary group.")
-                print str(self._conn_ref().pending_contacts_to_group)
-                print str(self._conn_ref().pending_contacts_to_group[handle.name])
+                #print str(self._conn_ref().pending_contacts_to_group)
+                #print str(self._conn_ref().pending_contacts_to_group[handle.name])
                 handle.contact.updateGroups(self._conn_ref().pending_contacts_to_group[handle.name])
+            self._conn_ref().contactAdded(handle)
             logger.info("Contact added.")
 
     def RemoveMembers(self, contacts, message):

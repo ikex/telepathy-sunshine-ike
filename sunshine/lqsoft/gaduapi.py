@@ -30,7 +30,7 @@ except ImportError:
     proper_twisted = False
 
 try:
-    import oauth as oauth
+    import oauth.oauth as oauth
     test_oauth = oauth.OAuthSignatureMethod_HMAC_SHA1()
     oauth_loaded = True
 except:

@@ -105,12 +105,12 @@ class SunshinePresenceMapping(object):
     }
 
     to_presence_type = {
-            ONLINE:     telepathy.constants.CONNECTION_PRESENCE_TYPE_AVAILABLE,
-            FFC:        telepathy.constants.CONNECTION_PRESENCE_TYPE_AVAILABLE,
-            AWAY:       telepathy.constants.CONNECTION_PRESENCE_TYPE_AWAY,
-            DND:       telepathy.constants.CONNECTION_PRESENCE_TYPE_BUSY,
-            INVISIBLE:  telepathy.constants.CONNECTION_PRESENCE_TYPE_HIDDEN,
-            OFFLINE:    telepathy.constants.CONNECTION_PRESENCE_TYPE_OFFLINE
+            ONLINE:     dbus.UInt32(telepathy.constants.CONNECTION_PRESENCE_TYPE_AVAILABLE),
+            FFC:        dbus.UInt32(telepathy.constants.CONNECTION_PRESENCE_TYPE_AVAILABLE),
+            AWAY:       dbus.UInt32(telepathy.constants.CONNECTION_PRESENCE_TYPE_AWAY),
+            DND:       dbus.UInt32(telepathy.constants.CONNECTION_PRESENCE_TYPE_BUSY),
+            INVISIBLE:  dbus.UInt32(telepathy.constants.CONNECTION_PRESENCE_TYPE_HIDDEN),
+            OFFLINE:    dbus.UInt32(telepathy.constants.CONNECTION_PRESENCE_TYPE_OFFLINE)
             }
 
 class SunshinePresence(telepathy.server.ConnectionInterfaceSimplePresence):
@@ -239,7 +239,7 @@ class SunshinePresence(telepathy.server.ConnectionInterfaceSimplePresence):
             self._self_presence_changed(SunshineHandleFactory(self, 'self'), presence, message)
             
     def get_simple_presences(self, contacts):
-        presences = {}
+        presences = dbus.Dictionary(signature='u(uss)')
         for handle_id in contacts:
             handle = self.handle(telepathy.HANDLE_TYPE_CONTACT, handle_id)
             if handle == SunshineHandleFactory(self, 'self'):
@@ -260,7 +260,7 @@ class SunshinePresence(telepathy.server.ConnectionInterfaceSimplePresence):
 
             presence_type = SunshinePresenceMapping.to_presence_type[presence]
 
-            presences[handle] = (presence_type, presence, personal_message)
+            presences[handle] = dbus.Struct((presence_type, presence, personal_message), signature='uss')
         return presences
 
     def get_statuses(self):

@@ -2,7 +2,7 @@
 __author__="lreqc"
 __date__ ="$2009-07-14 01:07:32$"
 
-from sunshine.lqsoft.pygadu.packets import inpacket, outpacket
+from sunshine.lqsoft.pygadu.packets import Resolver, inpacket, outpacket
 
 from sunshine.lqsoft.cstruct.common import CStruct
 from sunshine.lqsoft.cstruct.fields import complex, numeric
@@ -32,11 +32,13 @@ class GaduPacket(CStruct):
 #
 # INCOMING PACKETS
 #
-@inpacket(0x01)
+#@inpacket(0x01)
 class WelcomePacket(GaduPacket):
     seed = numeric.IntField(0)
+    
+WelcomePacket = inpacket(0x01)(WelcomePacket)
 
-@inpacket(0x05)
+#@inpacket(0x05)
 class MessageAckPacket(GaduPacket): #SendMsgAck
     MSG_STATUS = Enum({
         'BLOCKED': 0x0001, 'DELIVERED': 0x0002,
@@ -47,26 +49,32 @@ class MessageAckPacket(GaduPacket): #SendMsgAck
     msg_status  = numeric.IntField(0)
     recipient   = numeric.IntField(1)
     seq         = numeric.IntField(2)
+MessageAckPacket = inpacket(0x05)(MessageAckPacket)
 
-@inpacket(0x09)
+#@inpacket(0x09)
 class LoginFailedPacket(GaduPacket):
     pass
+LoginFailedPacket = inpacket(0x09)(LoginFailedPacket)
 
-@inpacket(0x0b)
+#@inpacket(0x0b)
 class DisconnectPacket(GaduPacket):
     pass
+DisconnectPacket = inpacket(0x0b)(DisconnectPacket)
 
-@inpacket(0x14)
+#@inpacket(0x14)
 class NeedEmailPacket(GaduPacket):
     pass
+NeedEmailPacket = inpacket(0x14)(NeedEmailPacket)
 
-@inpacket(0x0d)
+#@inpacket(0x0d)
 class UnavailbleAckPacket(GaduPacket):
     pass
+UnavailbleAckPacket = inpacket(0x0d)(UnavailbleAckPacket)
 
-@inpacket(0x07)
+#@inpacket(0x07)
 class PongPacket(GaduPacket):
     pass
+PongPacket = inpacket(0x07)(PongPacket)
 
 #
 # OUTGOING PACKETS

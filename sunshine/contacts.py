@@ -36,7 +36,8 @@ class SunshineContacts(telepathy.server.ConnectionInterfaceContacts):
         telepathy.CONNECTION_INTERFACE_SIMPLE_PRESENCE : 'presence',
         telepathy.CONNECTION_INTERFACE_ALIASING : 'alias',
         telepathy.CONNECTION_INTERFACE_AVATARS : 'token',
-        telepathy.CONNECTION_INTERFACE_CAPABILITIES : 'caps'
+        telepathy.CONNECTION_INTERFACE_CAPABILITIES : 'caps',
+        telepathy.CONNECTION_INTERFACE_CONTACT_CAPABILITIES : 'capabilities'
         }
 
     def __init__(self):
@@ -52,27 +53,31 @@ class SunshineContacts(telepathy.server.ConnectionInterfaceContacts):
                             out_signature='a{ua{sv}}', sender_keyword='sender')
     def GetContactAttributes(self, handles, interfaces, hold, sender):
         #InspectHandle already checks we're connected, the handles and handle type.
+        supported_interfaces = set()
         for interface in interfaces:
-            if interface not in self.attributes:
-                raise telepathy.errors.InvalidArgument(
-                    'Interface %s is not supported by GetContactAttributes' % (interface))
+            if interface in self.attributes:
+                supported_interfaces.add(interface)
+            else:
+                logger.debug("Ignoring unsupported interface %s" % interface)
 
         handle_type = telepathy.HANDLE_TYPE_CONTACT
-        ret = {}
+        ret = dbus.Dictionary(signature='ua{sv}')
         for handle in handles:
-            ret[handle] = {}
+            ret[handle] = dbus.Dictionary(signature='sv')
 
         functions = {
             telepathy.CONNECTION :
                 lambda x: zip(x, self.InspectHandles(handle_type, x)),
-            telepathy.CONNECTION_INTERFACE_SIMPLE_PRESENCE :
+            telepathy.CONNECTION_INTERFACE_SIMPLE_PRESENCE:
                 lambda x: self.GetPresences(x).items(),
-            telepathy.CONNECTION_INTERFACE_ALIASING :
+            telepathy.CONNECTION_INTERFACE_ALIASING:
                 lambda x: self.GetAliases(x).items(),
-            telepathy.CONNECTION_INTERFACE_AVATARS :
+            telepathy.CONNECTION_INTERFACE_AVATARS:
                 lambda x: self.GetKnownAvatarTokens(x).items(),
-            telepathy.CONNECTION_INTERFACE_CAPABILITIES :
-                lambda x: self.GetCapabilities(x).items()
+            telepathy.CONNECTION_INTERFACE_CAPABILITIES:
+                lambda x: self.GetCapabilities(x).items(),
+            telepathy.CONNECTION_INTERFACE_CONTACT_CAPABILITIES:
+                lambda x: self.GetContactCapabilities(x).items()
             }
 
         #Hold handles if needed
@@ -81,8 +86,9 @@ class SunshineContacts(telepathy.server.ConnectionInterfaceContacts):
 
         # Attributes from the interface org.freedesktop.Telepathy.Connection
         # are always returned, and need not be requested explicitly.
-        interfaces = set(interfaces + [telepathy.CONNECTION])
-        for interface in interfaces:
+        supported_interfaces.add(telepathy.CONNECTION)
+
+        for interface in supported_interfaces:
             interface_attribute = interface + '/' + self.attributes[interface]
             results = functions[interface](handles)
             for handle, value in results:
