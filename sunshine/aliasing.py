@@ -18,6 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import logging
+import dbus
 
 import telepathy
 import telepathy.constants
@@ -45,7 +46,7 @@ class SunshineAliasing(telepathy.server.ConnectionInterfaceAliasing):
     def GetAliases(self, contacts):
         logger.debug("Called GetAliases")
 
-        result = {}
+        result = dbus.Dictionary(signature='us')
         for contact in contacts:
             result[contact] = self._get_alias(contact)
         return result

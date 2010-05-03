@@ -24,7 +24,7 @@ import time
 
 import telepathy
 
-from sunshine.util.decorator import async
+from sunshine.util.decorator import async, escape
 from sunshine.handle import SunshineHandleFactory
 
 __all__ = ['SunshineTextChannel']
@@ -32,22 +32,27 @@ __all__ = ['SunshineTextChannel']
 logger = logging.getLogger('Sunshine.TextChannel')
 
 
-class SunshineTextChannel(telepathy.server.ChannelTypeText):
+class SunshineTextChannel(telepathy.server.ChannelTypeText,
+                          telepathy.server.ChannelInterfaceChatState):
 
-    def __init__(self, conn, manager, conversation, props):
+    def __init__(self, conn, manager, conversation, props, object_path=None):
         _, surpress_handler, handle = manager._get_type_requested_handle(props)
         self._recv_id = 0
         self._conn_ref = weakref.ref(conn)
         self.conn = conn
 
         self.handle = handle
-        telepathy.server.ChannelTypeText.__init__(self, conn, manager, props)
+        telepathy.server.ChannelTypeText.__init__(self, conn, manager, props, object_path=None)
+        telepathy.server.ChannelInterfaceChatState.__init__(self)
 
     def Send(self, message_type, text):
         if message_type == telepathy.CHANNEL_TEXT_MESSAGE_TYPE_NORMAL:
             logger.info("Sending message to %s, id %s, body: '%s'" % (str(self.handle.name), str(self.handle.id), unicode(text)))
             msg = text.decode('UTF-8').encode('windows-1250', 'replace')
-            self.conn.gadu_client.sendTo(int(self.handle.name), str(text), str(msg))
+            #gg_text = escape(text.decode('UTF-8')).encode('UTF-8').replace('<', '&lt;').replace('>', '&gt;')
+            gg_text = text.decode('UTF-8', 'xmlcharrefreplace').replace('<', '&lt;').replace('>', '&gt;')
+            self._conn_ref().profile.sendTo(int(self.handle.name), str(gg_text), str(msg))
+            self._conn_ref().profile.sendTypingNotify(int(self.handle.name), 0)
         else:
             raise telepathy.NotImplemented("Unhandled message type")
         self.Sent(int(time.time()), message_type, text)
@@ -77,10 +82,20 @@ class SunshineTextChannel(telepathy.server.ChannelTypeText):
     def ListPendingMessages(self, clear):
         return telepathy.server.ChannelTypeText.ListPendingMessages(self, clear)
 
+    def SetChatState(self, state):
+        # Not useful if we dont have a conversation.
+        if state == telepathy.CHANNEL_CHAT_STATE_COMPOSING:
+            t = 1
+        else:
+            t = 0
+
+        handle = SunshineHandleFactory(self._conn_ref(), 'self')
+        self._conn_ref().profile.sendTypingNotify(int(self.handle.name), t)
+        self.ChatStateChanged(handle, state)
 
 class SunshineRoomTextChannel(telepathy.server.ChannelTypeText, telepathy.server.ChannelInterfaceGroup):
 
-    def __init__(self, conn, manager, conversation, props):
+    def __init__(self, conn, manager, conversation, props, object_path=None):
         _, surpress_handler, handle = manager._get_type_requested_handle(props)
         self._recv_id = 0
         self._conn_ref = weakref.ref(conn)
@@ -90,7 +105,7 @@ class SunshineRoomTextChannel(telepathy.server.ChannelTypeText, telepathy.server
             self.contacts = conversation
 
         self.handle = handle
-        telepathy.server.ChannelTypeText.__init__(self, conn, manager, props)
+        telepathy.server.ChannelTypeText.__init__(self, conn, manager, props, object_path=None)
         telepathy.server.ChannelInterfaceGroup.__init__(self)
 
         self.GroupFlagsChanged(telepathy.CHANNEL_GROUP_FLAG_CAN_ADD, 0)

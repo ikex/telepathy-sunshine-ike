@@ -37,12 +37,12 @@ logger = logging.getLogger('Sunshine.GroupChannel')
 
 class SunshineGroupChannel(SunshineListChannel):
 
-    def __init__(self, connection, manager, props):
+    def __init__(self, connection, manager, props, object_path=None):
         self.__pending_add = []
         self.__pending_remove = []
         self.conn = connection
         self.groups = {}
-        SunshineListChannel.__init__(self, connection, manager, props)
+        SunshineListChannel.__init__(self, connection, manager, props, object_path=object_path)
         self.GroupFlagsChanged(telepathy.CHANNEL_GROUP_FLAG_CAN_ADD | 
                 telepathy.CHANNEL_GROUP_FLAG_CAN_REMOVE, 0)
         @async

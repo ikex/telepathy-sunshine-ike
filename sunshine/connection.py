@@ -42,7 +42,7 @@ from sunshine.handle import SunshineHandleFactory
 from sunshine.capabilities import SunshineCapabilities
 from sunshine.contacts import SunshineContacts
 from sunshine.channel_manager import SunshineChannelManager
-from sunshine.util.decorator import async, stripHTML
+from sunshine.util.decorator import async, stripHTML, unescape
 
 __all__ = ['SunshineConfig', 'GaduClientFactory', 'SunshineConnection']
 
@@ -185,6 +185,7 @@ class GaduClientFactory(protocol.ClientFactory):
             self.config.exportLoop = None
         if reactor.running:
             reactor.stop()
+            os._exit(1)
 
     def clientConnectionFailed(self, connector, reason):
         logger.info('Connection failed. Reason: %s' % (reason))
@@ -197,6 +198,7 @@ class GaduClientFactory(protocol.ClientFactory):
             self.config.exportLoop = None
         if reactor.running:
             reactor.stop()
+            os._exit(1)
 
 class SunshineConnection(telepathy.server.Connection,
         telepathy.server.ConnectionInterfaceRequests,
@@ -207,6 +209,9 @@ class SunshineConnection(telepathy.server.Connection,
         SunshineContacts
         ):
 
+    _secret_parameters = set([
+            'password'
+            ])
     _mandatory_parameters = {
             'account' : 's',
             'password' : 's'
@@ -214,25 +219,19 @@ class SunshineConnection(telepathy.server.Connection,
     _optional_parameters = {
             'server' : 's',
             'port' : 'q',
+            'export-contacts' : 'b',
             'use-ssl' : 'b',
-            'export-contacts' : 'b'
+            'use-specified-server' : 'b'
             }
     _parameter_defaults = {
             'server' : '91.197.13.67',
-            'port' : dbus.UInt16(8074),
-            'use-ssl' : dbus.Boolean(False),
-            'export-contacts' : dbus.Boolean(False)
+            'port' : 8074,
+            'export-contacts' : False,
+            'use-ssl' : True,
+            'use-specified-server' : False
             }
 
     def __init__(self, manager, parameters):
-        try:
-            parameters['export-contacts'] = bool(parameters['export-contacts'])
-        except KeyError:
-            parameters['export-contacts'] = False
-        try:
-            parameters['use-ssl'] = bool(parameters['use-ssl'])
-        except KeyError:
-            parameters['use-ssl'] = False
         self.check_parameters(parameters)
 
         try:
@@ -241,8 +240,10 @@ class SunshineConnection(telepathy.server.Connection,
 
             self._manager = weakref.proxy(manager)
             self._account = (parameters['account'], parameters['password'])
-            self._server = (parameters['server'], parameters['port'])
+            self.param_server = (parameters['server'], parameters['port'])
             self._export_contacts = bool(parameters['export-contacts'])
+            self.param_use_ssl = bool(parameters['use-ssl'])
+            self.param_specified_server = bool(parameters['use-specified-server'])
 
             self.profile = GaduProfile(uin= int(parameters['account']) )
             self.profile.uin = int(parameters['account'])
@@ -252,6 +253,7 @@ class SunshineConnection(telepathy.server.Connection,
             self.profile.onLoginFailure = self.on_loginFailed
             self.profile.onContactStatusChange = self.on_updateContact
             self.profile.onMessageReceived = self.on_messageReceived
+            self.profile.onTypingNotification = self.onTypingNotification
             self.profile.onXmlAction = self.onXmlAction
             self.profile.onXmlEvent = self.onXmlEvent
             self.profile.onUserData = self.onUserData
@@ -294,8 +296,10 @@ class SunshineConnection(telepathy.server.Connection,
             telepathy.server.ConnectionInterfaceRequests.__init__(self)
             SunshinePresence.__init__(self)
             SunshineAvatars.__init__(self)
-            SunshineCapabilities.__init__(self)
             SunshineContacts.__init__(self)
+            SunshineCapabilities.__init__(self)
+            
+            self.updateCapabilitiesCalls()
 
             self.set_self_handle(SunshineHandleFactory(self, 'self'))
 
@@ -350,7 +354,10 @@ class SunshineConnection(telepathy.server.Connection,
             self.StatusChanged(telepathy.CONNECTION_STATUS_CONNECTING,
                     telepathy.CONNECTION_STATUS_REASON_REQUESTED)
             self.__disconnect_reason = telepathy.CONNECTION_STATUS_REASON_NONE_SPECIFIED
-            self.getServerAdress(self._account[0])
+            if self.param_specified_server:
+                self.makeConnection(self.param_server[0], self.param_server[1])
+            else:
+                self.getServerAdress(self._account[0])
 
     def Disconnect(self):
         if self.profile.contactsLoop:
@@ -368,6 +375,10 @@ class SunshineConnection(telepathy.server.Connection,
         self.profile.disconnect()
         #if reactor.running:
         #    reactor.stop()
+        os._exit(1)
+
+    def GetInterfaces(self):
+        return self._interfaces
 
     def RequestHandles(self, handle_type, names, sender):
         logger.info("Method RequestHandles called, handle type: %s, names: %s" % (str(handle_type), str(names)))
@@ -474,6 +485,14 @@ class SunshineConnection(telepathy.server.Connection,
         d.addCallback(self.on_server_adress_fetched, uin)
         d.addErrback(self.on_server_adress_fetched_failed, uin)
 
+    def makeConnection(self, ip, port):
+        logger.info("%s %s %s" % (ip, port, self.param_use_ssl))
+        if ssl_support and self.param_use_ssl:
+            self.ssl = ssl.CertificateOptions(method=SSL.SSLv3_METHOD)
+            reactor.connectSSL(ip, port, self.factory, self.ssl)
+        else:
+            reactor.connectTCP(ip, port, self.factory)
+
     def on_server_adress_fetched(self, result, uin):
         try:
             result = result.replace('\n', '')
@@ -481,11 +500,12 @@ class SunshineConnection(telepathy.server.Connection,
             if a[0] == '0' and a[-1:][0] != 'notoperating':
                 addr = a[-1:][0]
                 logger.info("GG server adress fetched, IP: %s" % (addr))
-                if ssl_support:
-                    self.ssl = ssl.CertificateOptions(method=SSL.SSLv3_METHOD)
-                    reactor.connectSSL(addr, 443, self.factory, self.ssl)
+                if ssl_support and self.param_use_ssl:
+                    port = 443
+                    self.makeConnection(addr, port)
                 else:
-                    reactor.connectTCP(addr, 8074, self.factory)
+                    port = 8074
+                    self.makeConnection(addr, port)
             else:
                 raise Exception()
         except:
@@ -539,6 +559,8 @@ class SunshineConnection(telepathy.server.Connection,
             self._status = telepathy.CONNECTION_STATUS_CONNECTED
             self.StatusChanged(telepathy.CONNECTION_STATUS_CONNECTED,
                     telepathy.CONNECTION_STATUS_REASON_REQUESTED)
+        #self._populate_capabilities()
+        #self.contactAdded(self.GetSelfHandle())
 
     def on_loginFailed(self, response):
         logger.info("Login failed: ", response)
@@ -559,14 +581,14 @@ class SunshineConnection(telepathy.server.Connection,
         if hasattr(msg.content.attrs, 'conference') and msg.content.attrs.conference != None:
             recipients = msg.content.attrs.conference.recipients
             #recipients.append(self.profile.uin)
-            print msg.sender
-            print 'recipients:', recipients
+            #print msg.sender
+            #print 'recipients:', recipients
             recipients = map(str, recipients)
             recipients.append(str(msg.sender))
-            print 'recipients:', recipients
+            #print 'recipients:', recipients
             recipients = sorted(recipients)
             conf_name = ', '.join(map(str, recipients))
-            print 'conf_name:', conf_name
+            #print 'conf_name:', conf_name
 
             #active handle for current writting contact
             ahandle_id = self.get_handle_id_by_name(telepathy.constants.HANDLE_TYPE_CONTACT,
@@ -580,7 +602,7 @@ class SunshineConnection(telepathy.server.Connection,
 
             #now we need to preapare a new room and make initial users in it
             room_handle_id = self.get_handle_id_by_name(telepathy.constants.HANDLE_TYPE_ROOM, str(conf_name))
-            print 'room_handle_id:', room_handle_id
+            #print 'room_handle_id:', room_handle_id
 
             handles = []
             
@@ -624,11 +646,12 @@ class SunshineConnection(telepathy.server.Connection,
 
             if msg.content.html_message:
                 #we need to strip all html tags
-                text = stripHTML(msg.content.html_message).replace('&lt;', '<').replace('&gt;', '>')
+                text = unescape(stripHTML(msg.content.html_message))
             else:
-                text = (msg.content.plain_message).decode('windows-1250')
+                text = unescape((msg.content.plain_message).decode('windows-1250'))
 
-            message = "%s" % unicode(str(text).replace('\x00', '').replace('\r', '').decode('UTF-8'))
+
+            message = "%s" % unicode(str(text).replace('\x00', '').replace('\r', ''))
             #print 'message: ', message
             channel.Received(self._recv_id, timestamp, ahandle, type, 0, message)
             self._recv_id += 1
@@ -658,9 +681,9 @@ class SunshineConnection(telepathy.server.Connection,
 
             if msg.content.html_message:
                 #we need to strip all html tags
-                text = stripHTML(msg.content.html_message).replace('&lt;', '<').replace('&gt;', '>')
+                text = unescape(stripHTML(msg.content.html_message.replace('<br>', '\n')))
             else:
-                text = (msg.content.plain_message).decode('windows-1250')
+                text = unescape((msg.content.plain_message).decode('windows-1250'))
 
 
             message = "%s" % unicode(str(text).replace('\x00', '').replace('\r', ''))
@@ -669,8 +692,51 @@ class SunshineConnection(telepathy.server.Connection,
             channel.Received(self._recv_id, timestamp, handle, type, 0, message)
             self._recv_id += 1
             
+    def onTypingNotification(self, data):
+        logger.info("TypingNotification uin=%d, type=%d" % (data.uin, data.type))
+        
+        handle_id = self.get_handle_id_by_name(telepathy.constants.HANDLE_TYPE_CONTACT,
+                                  str(data.uin))
+        if handle_id != 0:
+            handle = self.handle(telepathy.constants.HANDLE_TYPE_CONTACT, handle_id)
+
+            props = self._generate_props(telepathy.CHANNEL_TYPE_TEXT,
+                    handle, False)
+            channel = self._channel_manager.channel_for_props(props,
+                    signal=True, conversation=None)
+            
+            if type == 0:
+                channel.ChatStateChanged(handle, telepathy.CHANNEL_CHAT_STATE_PAUSED)
+            elif type >= 1:
+                channel.ChatStateChanged(handle, telepathy.CHANNEL_CHAT_STATE_COMPOSING)
+                reactor.callLater(3, channel.ChatStateChanged, handle, telepathy.CHANNEL_CHAT_STATE_PAUSED)
+
     def onXmlAction(self, xml):
         logger.info("XmlAction: %s" % xml.data)
+
+        #event occurs when user from our list change avatar
+        #<events>
+        #    <event id="12989655759719404037">
+        #        <type>28</type>
+        #        <sender>4634020</sender>
+        #        <time>1270577383</time>
+        #        <body></body>
+        #        <bodyXML>
+        #            <smallAvatar>http://avatars.gadu-gadu.pl/small/4634020?ts=1270577383</smallAvatar>
+        #        </bodyXML>
+        #    </event>
+        #</events>
+        try:
+            tree = ET.fromstring(xml.data)
+            core = tree.find("event")
+            type = core.find("type").text
+            if type == '28':
+                sender = core.find("sender").text
+                url = core.find("bodyXML/smallAvatar").text
+                logger.info("XMLAction: Avatar Update")
+                self.getAvatar(sender, url)
+        except:
+            pass
 
     def onXmlEvent(self, xml):
         logger.info("XmlEvent: %s" % xml,data)

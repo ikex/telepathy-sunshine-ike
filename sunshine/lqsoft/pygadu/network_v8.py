@@ -97,7 +97,7 @@ class StructUserDataUser(CStruct):
 #
 # PACKETS
 #
-@outpacket(0x31)
+#@outpacket(0x31)
 class LoginPacket(GaduPacket):
     uin             = UIntField(0)
     language        = StringField(1, length=2, default='pl')
@@ -105,7 +105,7 @@ class LoginPacket(GaduPacket):
     login_hash      = StringField(3, length=64)
     status          = UIntField(4, default=0x02)
     flags           = UIntField(5, default=0x03)
-    features        = UIntField(6, default=0x637)
+    features        = UIntField(6, default=0x2637)
     local_ip        = IntField(7)
     local_port      = ShortField(8)
     external_ip     = IntField(9)
@@ -121,25 +121,29 @@ class LoginPacket(GaduPacket):
         hash.update(password)
         hash.update(struct.pack('<i', seed))
         self.login_hash = hash.digest()
+LoginPacket = outpacket(0x31)(LoginPacket)
 
-@inpacket(0x35)
+#@inpacket(0x35)
 class LoginOKPacket(GaduPacket): #LoginOk80
     reserved       = IntField(0, True)
+LoginOKPacket = inpacket(0x35)(LoginOKPacket)
 
-@inpacket(0x2e)
+#@inpacket(0x2e)
 class MessageInPacket(GaduPacket): #RecvMsg80
     sender              = IntField(0)
     seq                 = IntField(1)
     time                = IntField(2)
     content             = StructField(3, struct=StructMessage)
+MessageInPacket = inpacket(0x2e)(MessageInPacket)
 
-@outpacket(0x2d)
+#@outpacket(0x2d)
 class MessageOutPacket(GaduPacket):
     recipient           = IntField(0, default=None)
     seq                 = IntField(1)
     content             = StructField(2, struct=StructMessage)
+MessageOutPacket = outpacket(0x2d)(MessageOutPacket)
 
-@outpacket(0x38)
+#@outpacket(0x38)
 class ChangeStatusPacket(GaduPacket): #NewStatus80
     STATUS = Enum({
         'NOT_AVAILABLE':         0x0001,
@@ -166,19 +170,22 @@ class ChangeStatusPacket(GaduPacket): #NewStatus80
     #description     = VarcharField(2, default='test')
     description_size = UIntField(2)
     description      = StringField(3, length='description_size')
+ChangeStatusPacket = outpacket(0x38)(ChangeStatusPacket)
 
-@inpacket(0x36)
+#@inpacket(0x36)
 class StatusUpdatePacket(GaduPacket): # Status80
     contact         = StructField(0, struct=StructStatus)
+StatusUpdatePacket = inpacket(0x36)(StatusUpdatePacket)
 
-@inpacket(0x37)
+#@inpacket(0x37)
 class StatusNoticiesPacket(GaduPacket): # NotifyReply80
     contacts        = ArrayField(0, length=-1, subfield=StructField(0, struct=StructStatus))
+StatusNoticiesPacket = inpacket(0x37)(StatusNoticiesPacket)
 
 #
 # Contact database altering packets
 #
-@outpacket(0x2f)
+#@outpacket(0x2f)
 class ULRequestPacket(GaduPacket): # UserListReq80
     """Import contact list from the server"""
     TYPE = Enum({
@@ -189,8 +196,9 @@ class ULRequestPacket(GaduPacket): # UserListReq80
 
     type    =   ByteField(0)
     data    =   StringField(1, length=-1)
+ULRequestPacket = outpacket(0x2f)(ULRequestPacket)
 
-@inpacket(0x30)
+#@inpacket(0x30)
 class ULReplyPacket(GaduPacket): # UserListReply80
     TYPE = Enum({
         'PUT_REPLY':        0x00,
@@ -209,28 +217,48 @@ class ULReplyPacket(GaduPacket): # UserListReply80
     @property
     def is_final(self):
         return (self.type & 0x02)
+ULReplyPacket = inpacket(0x30)(ULReplyPacket)
 
 #
 # GG_XML_EVENT and GG_XML_ACTION packets
 #
-@inpacket(0x27)
+#@inpacket(0x27)
 class XmlEventPacket(GaduPacket):
     data    =   StringField(0, length=-1)
+XmlEventPacket = inpacket(0x27)(XmlEventPacket)
 
-@inpacket(0x2c)
+#@inpacket(0x2c)
 class XmlActionPacket(GaduPacket):
     data    =   StringField(0, length=-1)
+XmlActionPacket = inpacket(0x2c)(XmlActionPacket)
 
-#define GG_RECV_MSG_ACK 0x0046
-@outpacket(0x46)
+#@outpacket(0x46)
 class RecvMsgAck(GaduPacket):
     num     = IntField(0)
+RecvMsgAck = outpacket(0x46)(RecvMsgAck)
 
 #
 # GG_USER_DATA packets
 #
-@inpacket(0x44)
+#@inpacket(0x44)
 class UserDataPacket(GaduPacket):
     type		= IntField(0)
     num                 = IntField(1)
     users		= ArrayField(2, length='num', subfield=StructField(0, struct=StructUserDataUser))
+UserDataPacket = inpacket(0x44)(UserDataPacket)
+
+#
+# GG_TYPING_NOTIFY packets
+#
+#@inpacket(0x59)
+#@outpacket(0x59)
+class TypingNotifyPacket(GaduPacket):
+    TYPE = Enum({
+        'START':        0x01,
+        'PAUSE':        0x05,
+        'STOP':         0x00
+    })
+    type        = ShortField(0)
+    uin         = IntField(1)
+TypingNotifyPacket = inpacket(0x59)(TypingNotifyPacket)
+TypingNotifyPacket = outpacket(0x59)(TypingNotifyPacket)

@@ -11,8 +11,8 @@ from twisted.internet import gtk2reactor
 gtk2reactor.install()
 
 from twisted.internet import reactor, protocol
-if sys.version_info < (2, 6):
-    print >> sys.stderr, 'Critical: python >= 2.6 required. Exiting.'
+if sys.version_info < (2, 5):
+    print >> sys.stderr, 'Critical: python >= 2.5 required. Exiting.'
     sys.exit(1)
 
 import telepathy

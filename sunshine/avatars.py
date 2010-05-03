@@ -37,6 +37,11 @@ __all__ = ['SunshineAvatars']
 
 logger = logging.getLogger('Sunshine.Avatars')
 
+SUPPORTED_AVATAR_MIME_TYPES = dbus.Array(["image/png", "image/jpeg", "image/gif"], signature='s')
+MINIMUM_AVATAR_PIXELS = dbus.UInt32(96)
+RECOMMENDED_AVATAR_PIXELS = dbus.UInt32(96)
+MAXIMUM_AVATAR_PIXELS = dbus.UInt32(256)
+MAXIMUM_AVATAR_BYTES = dbus.UInt32(500 * 1024)
 
 class SunshineAvatars(telepathy.server.ConnectionInterfaceAvatars):
 
@@ -44,10 +49,25 @@ class SunshineAvatars(telepathy.server.ConnectionInterfaceAvatars):
         print 'SunshineAvatars called.'
         self._avatar_known = False
         telepathy.server.ConnectionInterfaceAvatars.__init__(self)
+        
+        dbus_interface = telepathy.CONNECTION_INTERFACE_AVATARS
+        self._implement_property_get(dbus_interface, {
+            'SupportedAvatarMIMETypes':
+            lambda: SUPPORTED_AVATAR_MIME_TYPES,
+            'MinimumAvatarHeight': lambda: MINIMUM_AVATAR_PIXELS,
+            'MinimumAvatarWidth': lambda: MINIMUM_AVATAR_PIXELS,
+            'RecommendedAvatarHeight': lambda: RECOMMENDED_AVATAR_PIXELS,
+            'RecommendedAvatarWidth': lambda: RECOMMENDED_AVATAR_PIXELS,
+            'MaximumAvatarHeight': lambda: MAXIMUM_AVATAR_PIXELS,
+            'MaximumAvatarWidth': lambda: MAXIMUM_AVATAR_PIXELS,
+            'MaximumAvatarBytes': lambda: MAXIMUM_AVATAR_BYTES,
+        })
 
     def GetAvatarRequirements(self):
-        mime_types = ("image/png","image/jpeg","image/gif")
-        return (mime_types, 0, 0, 0, 0, 0)
+        return (SUPPORTED_AVATAR_MIME_TYPES,
+                MINIMUM_AVATAR_PIXELS, MINIMUM_AVATAR_PIXELS,
+                MAXIMUM_AVATAR_PIXELS, MAXIMUM_AVATAR_PIXELS,
+                MAXIMUM_AVATAR_BYTES)
 
     def GetKnownAvatarTokens(self, contacts):
         result = {}
@@ -108,6 +128,15 @@ class SunshineAvatars(telepathy.server.ConnectionInterfaceAvatars):
         pass
 #        self.msn_client.profile.msn_object = None
 #        self._avatar_known = True
+
+    def getAvatar(self, sender, url):
+        logger.info("getAvatar: %s %s" % (sender, url))
+        handle_id = self.get_handle_id_by_name(telepathy.constants.HANDLE_TYPE_CONTACT, str(sender))
+        
+        if handle_id != 0:
+            d = getPage(str(url), timeout=20)
+            d.addCallback(self.on_fetch_avatars_ok, str(url), handle_id)
+            d.addErrback(self.on_fetch_avatars_failed, str(url), handle_id)
 
     def on_fetch_avatars_file_ok(self, result, url, handle_id):
         try:

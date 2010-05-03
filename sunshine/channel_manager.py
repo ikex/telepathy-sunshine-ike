@@ -19,6 +19,7 @@
 
 import logging
 import weakref
+from string import ascii_letters, digits
 
 import dbus
 import telepathy
@@ -29,57 +30,160 @@ from sunshine.channel.text import SunshineTextChannel, SunshineRoomTextChannel
 #from sunshine.channel.media import SunshineMediaChannel
 from sunshine.handle import SunshineHandleFactory
 
+#from butterfly.Channel_Interface_Conference import CHANNEL_INTERFACE_CONFERENCE
+
 __all__ = ['SunshineChannelManager']
 
 logger = logging.getLogger('Sunshine.ChannelManager')
 
+_ASCII_ALNUM = ascii_letters + digits
+
+# copy/pasted from tp-glib's libtpcodegen
+def escape_as_identifier(identifier):
+    """Escape the given string to be a valid D-Bus object path or service
+    name component, using a reversible encoding to ensure uniqueness.
+
+    The reversible encoding is as follows:
+
+    * The empty string becomes '_'
+    * Otherwise, each non-alphanumeric character is replaced by '_' plus
+      two lower-case hex digits; the same replacement is carried out on
+      the first character, if it's a digit
+    """
+    # '' -> '_'
+    if not identifier:
+        return '_'
+
+    # A bit of a fast path for strings which are already OK.
+    # We deliberately omit '_' because, for reversibility, that must also
+    # be escaped.
+    if (identifier.strip(_ASCII_ALNUM) == '' and
+        identifier[0] in ascii_letters):
+        return identifier
+
+    # The first character may not be a digit
+    if identifier[0] not in ascii_letters:
+        ret = ['_%02x' % ord(identifier[0])]
+    else:
+        ret = [identifier[0]]
+
+    # Subsequent characters may be digits or ASCII letters
+    for c in identifier[1:]:
+        if c in _ASCII_ALNUM:
+            ret.append(c)
+        else:
+            ret.append('_%02x' % ord(c))
+
+    return ''.join(ret)
+
 class SunshineChannelManager(telepathy.server.ChannelManager):
+    __text_channel_id = 1
+    __media_channel_id = 1
+
     def __init__(self, connection):
         telepathy.server.ChannelManager.__init__(self, connection)
 
-        fixed = {telepathy.CHANNEL_INTERFACE + '.ChannelType': telepathy.CHANNEL_TYPE_TEXT,
-            telepathy.CHANNEL_INTERFACE + '.TargetHandleType': dbus.UInt32(telepathy.HANDLE_TYPE_CONTACT)}
-        self._implement_channel_class(telepathy.CHANNEL_TYPE_TEXT,
-            self._get_text_channel, fixed, [])
 
-        fixed = {telepathy.CHANNEL_INTERFACE + '.ChannelType': telepathy.CHANNEL_TYPE_TEXT,
-            telepathy.CHANNEL_INTERFACE + '.TargetHandleType': dbus.UInt32(telepathy.HANDLE_TYPE_ROOM)}
-        self._implement_channel_class(telepathy.CHANNEL_TYPE_TEXT,
-            self._get_text_channel, fixed, [])
+        classes = [
+            ({telepathy.CHANNEL_INTERFACE + '.ChannelType': telepathy.CHANNEL_TYPE_TEXT,
+              telepathy.CHANNEL_INTERFACE + '.TargetHandleType': dbus.UInt32(telepathy.HANDLE_TYPE_CONTACT)},
+             [telepathy.CHANNEL_INTERFACE + '.TargetHandle',
+              telepathy.CHANNEL_INTERFACE + '.TargetID']),
 
-        fixed = {telepathy.CHANNEL_INTERFACE + '.ChannelType': telepathy.CHANNEL_TYPE_CONTACT_LIST}
-        self._implement_channel_class(telepathy.CHANNEL_TYPE_CONTACT_LIST,
-            self._get_list_channel, fixed, [])
+            ({telepathy.CHANNEL_INTERFACE + '.ChannelType': telepathy.CHANNEL_TYPE_TEXT,
+              telepathy.CHANNEL_INTERFACE + '.TargetHandleType': dbus.UInt32(telepathy.HANDLE_TYPE_ROOM)},
+#             [
+#              CHANNEL_INTERFACE_CONFERENCE + '.InitialChannels',
+#              CHANNEL_INTERFACE_CONFERENCE + '.InitialInviteeHandles',
+#              CHANNEL_INTERFACE_CONFERENCE + '.InitialInviteeIDs',
+#              CHANNEL_INTERFACE_CONFERENCE + '.InitialMessage',
+#              CHANNEL_INTERFACE_CONFERENCE + '.SupportsNonMerges']
+             [telepathy.CHANNEL_INTERFACE + '.TargetHandle',
+              telepathy.CHANNEL_INTERFACE + '.TargetID']),
+            ]
+        self.implement_channel_classes(telepathy.CHANNEL_TYPE_TEXT, self._get_text_channel, classes)
+
+        classes = [
+            ({telepathy.CHANNEL_INTERFACE + '.ChannelType': telepathy.CHANNEL_TYPE_CONTACT_LIST,
+              telepathy.CHANNEL_INTERFACE + '.TargetHandleType': dbus.UInt32(telepathy.HANDLE_TYPE_GROUP)},
+             [telepathy.CHANNEL_INTERFACE + '.TargetHandle',
+              telepathy.CHANNEL_INTERFACE + '.TargetID']),
+
+            ({telepathy.CHANNEL_INTERFACE + '.ChannelType': telepathy.CHANNEL_TYPE_CONTACT_LIST,
+              telepathy.CHANNEL_INTERFACE + '.TargetHandleType': dbus.UInt32(telepathy.HANDLE_TYPE_LIST)},
+             [telepathy.CHANNEL_INTERFACE + '.TargetHandle',
+              telepathy.CHANNEL_INTERFACE + '.TargetID'])
+            ]
+        self.implement_channel_classes(telepathy.CHANNEL_TYPE_CONTACT_LIST, self._get_list_channel, classes)
+
+#        classes = [
+#            ({telepathy.CHANNEL_INTERFACE + '.ChannelType': telepathy.CHANNEL_TYPE_STREAMED_MEDIA,
+#              telepathy.CHANNEL_INTERFACE + '.TargetHandleType': dbus.UInt32(telepathy.HANDLE_TYPE_CONTACT)},
+#             [telepathy.CHANNEL_INTERFACE + '.TargetHandle',
+#              telepathy.CHANNEL_INTERFACE + '.TargetID',
+#              telepathy.CHANNEL_TYPE_STREAMED_MEDIA + '.InitialAudio',
+#              telepathy.CHANNEL_TYPE_STREAMED_MEDIA + '.InitialVideo'])
+#            ]
+#        self.implement_channel_classes(telepathy.CHANNEL_TYPE_STREAMED_MEDIA, self._get_media_channel, classes)
+#
+#        fixed = {telepathy.CHANNEL_INTERFACE + '.ChannelType': telepathy.CHANNEL_TYPE_TEXT,
+#            telepathy.CHANNEL_INTERFACE + '.TargetHandleType': dbus.UInt32(telepathy.HANDLE_TYPE_CONTACT)}
+#        self._implement_channel_class(telepathy.CHANNEL_TYPE_TEXT,
+#            self._get_text_channel, fixed, [])
+#
+#        fixed = {telepathy.CHANNEL_INTERFACE + '.ChannelType': telepathy.CHANNEL_TYPE_TEXT,
+#            telepathy.CHANNEL_INTERFACE + '.TargetHandleType': dbus.UInt32(telepathy.HANDLE_TYPE_ROOM)}
+#        self._implement_channel_class(telepathy.CHANNEL_TYPE_TEXT,
+#            self._get_text_channel, fixed, [])
+#
+#        fixed = {telepathy.CHANNEL_INTERFACE + '.ChannelType': telepathy.CHANNEL_TYPE_CONTACT_LIST}
+#        self._implement_channel_class(telepathy.CHANNEL_TYPE_CONTACT_LIST,
+#            self._get_list_channel, fixed, [])
 
 #        fixed = {telepathy.CHANNEL_INTERFACE + '.ChannelType': telepathy.CHANNEL_TYPE_STREAMED_MEDIA,
 #            telepathy.CHANNEL_INTERFACE + '.TargetHandleType': dbus.UInt32(telepathy.HANDLE_TYPE_CONTACT)}
 #        self._implement_channel_class(telepathy.CHANNEL_TYPE_STREAMED_MEDIA,
 #            self._get_media_channel, fixed, [telepathy.CHANNEL_INTERFACE + '.TargetHandle'])
-
     def _get_list_channel(self, props):
         _, surpress_handler, handle = self._get_type_requested_handle(props)
 
+        logger.debug('New contact list channel')
+
         if handle.get_type() == telepathy.HANDLE_TYPE_GROUP:
-            channel = SunshineGroupChannel(self._conn, self, props)
-            logger.debug('New group channel')
+            path = "RosterChannel/Group/%s" % escape_as_identifier(handle.get_name())
+            channel = SunshineGroupChannel(self._conn, self, props, object_path=path)
         else:
             channel = SunshineContactListChannelFactory(self._conn,
                 self, handle, props)
-            logger.debug('New contact list channel: %s' % (handle.name))
         return channel
+    
+#    def _get_list_channel(self, props):
+#        _, surpress_handler, handle = self._get_type_requested_handle(props)
+#
+#        if handle.get_type() == telepathy.HANDLE_TYPE_GROUP:
+#            channel = SunshineGroupChannel(self._conn, self, props)
+#            logger.debug('New group channel')
+#        else:
+#            channel = SunshineContactListChannelFactory(self._conn,
+#                self, handle, props)
+#            logger.debug('New contact list channel: %s' % (handle.name))
+#        return channel
 
     def _get_text_channel(self, props, conversation=None):
         _, surpress_handler, handle = self._get_type_requested_handle(props)
 
+        path = "TextChannel%d" % self.__text_channel_id
+        self.__text_channel_id += 1
+
         if handle.get_type() == telepathy.HANDLE_TYPE_CONTACT:
             logger.debug('New text channel for contact handle, name: %s, id: %s, type: %s' % (handle.name, handle.id, handle.type))
 
-            channel = SunshineTextChannel(self._conn, self, conversation, props)
+            channel = SunshineTextChannel(self._conn, self, conversation, props, object_path=path)
             return channel
         elif handle.get_type() == telepathy.HANDLE_TYPE_ROOM:
             logger.debug('New text channel for room handle, name: %s, id: %s, type: %s' % (handle.name, handle.id, handle.type))
 
-            channel = SunshineRoomTextChannel(self._conn, self, conversation, props)
+            channel = SunshineRoomTextChannel(self._conn, self, conversation, props, object_path=path)
             return channel
         else:
             raise telepathy.NotImplemented('Unknown handle for text channel.')

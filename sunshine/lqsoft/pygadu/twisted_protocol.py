@@ -153,6 +153,10 @@ class GaduClient(Protocol):
     def _handleMessageAckPacket(self, msg):
         print "MSG_Status=%x, recipient=%d, seq=%d" % (msg.msg_status, msg.recipient, msg.seq) 
 
+    def _handleTypingNotifyPacket(self, data):
+        #print "MSG Typing Notify uin=%d, type=%d" % (data.uin, data.type)
+        self.user_profile.onTypingNotification(data)
+
     def _handleDisconnectPacket(self, msg):
         print 'Server sent - disconnect packet'
         Protocol.connectionLost(self, None)
@@ -215,6 +219,10 @@ class GaduClient(Protocol):
             attrs = attrs)
 
         self._sendPacket( klass( recipient=rcpt, seq=int(time.time()), content=payload) )
+
+    def sendTypingNotify(self, uin, type):
+        klass = Resolver.by_name('TypingNotifyPacket')
+        self._sendPacket(klass(uin=uin, type=type))
 
     def sendConfMessage(self, rcpt, html_text, plain_message, contacts):
         klass = Resolver.by_name('MessageOutPacket')
