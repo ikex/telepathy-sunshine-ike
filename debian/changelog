@@ -1,3 +1,9 @@
+telepathy-sunshine (0.1.8-1) UNRELEASED; urgency=low
+
+  * New upstream release
+
+ -- Sjoerd Simons <sjoerd@debian.org>  Sat, 08 May 2010 12:49:15 +0100
+
 telepathy-sunshine (0.1.7-1) unstable; urgency=low
 
   * Initial release
