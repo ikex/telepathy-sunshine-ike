@@ -32,13 +32,10 @@ class GaduPacket(CStruct):
 #
 # INCOMING PACKETS
 #
-#@inpacket(0x01)
 class WelcomePacket(GaduPacket):
-    seed = numeric.IntField(0)
-    
+    seed = numeric.IntField(0)    
 WelcomePacket = inpacket(0x01)(WelcomePacket)
 
-#@inpacket(0x05)
 class MessageAckPacket(GaduPacket): #SendMsgAck
     MSG_STATUS = Enum({
         'BLOCKED': 0x0001, 'DELIVERED': 0x0002,
@@ -51,27 +48,22 @@ class MessageAckPacket(GaduPacket): #SendMsgAck
     seq         = numeric.IntField(2)
 MessageAckPacket = inpacket(0x05)(MessageAckPacket)
 
-#@inpacket(0x09)
 class LoginFailedPacket(GaduPacket):
     pass
 LoginFailedPacket = inpacket(0x09)(LoginFailedPacket)
 
-#@inpacket(0x0b)
 class DisconnectPacket(GaduPacket):
     pass
 DisconnectPacket = inpacket(0x0b)(DisconnectPacket)
 
-#@inpacket(0x14)
 class NeedEmailPacket(GaduPacket):
     pass
 NeedEmailPacket = inpacket(0x14)(NeedEmailPacket)
 
-#@inpacket(0x0d)
 class UnavailbleAckPacket(GaduPacket):
     pass
 UnavailbleAckPacket = inpacket(0x0d)(UnavailbleAckPacket)
 
-#@inpacket(0x07)
 class PongPacket(GaduPacket):
     pass
 PongPacket = inpacket(0x07)(PongPacket)
@@ -79,7 +71,6 @@ PongPacket = inpacket(0x07)(PongPacket)
 #
 # OUTGOING PACKETS
 #
-
 class StructNotice(CStruct): # Notify
     TYPE = Enum({
         'BUDDY':    0x01,
@@ -93,26 +84,27 @@ class StructNotice(CStruct): # Notify
     def __str__(self):
         return "%d[%d]" (self.uin, self.type)
 
-@outpacket(0x0f)
 class NoticeFirstPacket(GaduPacket): #NotifyFirst
     contacts        = complex.ArrayField(0, complex.StructField(0, struct=StructNotice), length=-1)
+NoticeFirstPacket = outpacket(0x0f)(NoticeFirstPacket)
 
-@outpacket(0x10)
 class NoticeLastPacket(GaduPacket): #NotifyLast
     contacts        = complex.ArrayField(0, complex.StructField(0, struct=StructNotice), length=-1)
+NoticeLastPacket = outpacket(0x10)(NoticeLastPacket)
 
-@outpacket(0x12)
 class NoNoticesPacket(GaduPacket):
     pass
+NoNoticesPacket = outpacket(0x12)(NoNoticesPacket)
 
-@outpacket(0x0d)
 class AddNoticePacket(GaduPacket):
     contact        = complex.StructField(0, struct=StructNotice)
+AddNoticePacket = outpacket(0x0d)(AddNoticePacket)
 
-@outpacket(0x0e)
 class RemoveNoticePacket(GaduPacket):
     contact        = complex.StructField(0, struct=StructNotice)
+RemoveNoticePacket = outpacket(0x0e)(RemoveNoticePacket)
 
-@outpacket(0x08)
 class PingPacket(GaduPacket):
     pass
+PingPacket = outpacket(0x08)(PingPacket)
+

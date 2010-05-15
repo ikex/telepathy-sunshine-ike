@@ -90,11 +90,15 @@ class SunshineCapabilities(telepathy.server.ConnectionInterfaceCapabilities,
         if 0 in handles:
             raise telepathy.InvalidHandle('Contact handle list contains zero')
 
+        #a{ua(a{sv}as)}
         ret = dbus.Dictionary({}, signature='ua(a{sv}as)')
         for i in handles:
+            print i
             handle = self.handle(telepathy.HANDLE_TYPE_CONTACT, i)
-            ret[handle] = self._contact_caps[handle]
-
+            if handle in self._contact_caps:
+                ret[handle] = dbus.Array(self._contact_caps[handle], signature='(a{sv}as)')
+            else:
+                ret[handle] = []
         return ret
 
     def UpdateCapabilities(self, caps):
