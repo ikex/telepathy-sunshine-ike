@@ -24,6 +24,8 @@ import logging
 
 import xml.etree.ElementTree as ET
 
+from sunshine.util.config import SunshineConfig
+
 from sunshine.lqsoft.pygadu.twisted_protocol import GaduClient
 from sunshine.lqsoft.pygadu.models import GaduProfile, GaduContact, GaduContactGroup
 
@@ -44,13 +46,13 @@ from sunshine.contacts import SunshineContacts
 from sunshine.channel_manager import SunshineChannelManager
 from sunshine.util.decorator import async, stripHTML, unescape
 
-__all__ = ['SunshineConfig', 'GaduClientFactory', 'SunshineConnection']
+__all__ = ['GaduClientFactory', 'SunshineConnection']
 
 logger = logging.getLogger('Sunshine.Connection')
 
+#SSL
 ssl_support = False
 
-#SSL
 try:
     from OpenSSL import crypto, SSL
     from twisted.internet import ssl
@@ -69,105 +71,12 @@ if ssl_support == False:
 else:
     logger.info('Using SSL-like connection.')
 
-class SunshineConfig(object):
-    def __init__(self, uin):
-        self.uin = uin
-        self.path = None
-        self.contacts_count = 0
-
-    def check_dirs(self):
-        path = os.path.join(os.path.join(os.environ['HOME'], '.telepathy-sunshine'), str(self.uin))
-        try:
-            os.makedirs(path)
-        except:
-            pass
-        if os.path.isfile(os.path.join(path, 'profile.xml')):
-            pass
-        else:
-            contactbook_xml = ET.Element("ContactBook")
-
-            ET.SubElement(contactbook_xml, "Groups")
-            ET.SubElement(contactbook_xml, "Contacts")
-
-            main_xml = ET.ElementTree(contactbook_xml)
-            main_xml.write(os.path.join(path, 'profile.xml'), encoding="UTF-8")
-            
-        self.path = os.path.join(path, 'profile.xml')
-        self.path2 = os.path.join(path, 'alias')
-        return os.path.join(path, 'profile.xml')
-
-    def get_contacts(self):
-        file = open(self.path, "r")
-        config_xml = ET.parse(file).getroot()
-
-        self.roster = {'groups':[], 'contacts':[]}
-
-        for elem in config_xml.find('Groups').getchildren():
-            self.roster['groups'].append(elem)
-
-        for elem in config_xml.find('Contacts').getchildren():
-            self.roster['contacts'].append(elem)
-
-        self.contacts_count = len(config_xml.find('Contacts').getchildren())
-
-        return self.roster
-
-    def make_contacts_file(self, groups, contacts):
-        contactbook_xml = ET.Element("ContactBook")
-
-        groups_xml = ET.SubElement(contactbook_xml, "Groups")
-        contacts_xml = ET.SubElement(contactbook_xml, "Contacts")
-
-        for group in groups:
-            #Id, Name, IsExpanded, IsRemovable
-            group_xml = ET.SubElement(groups_xml, "Group")
-            ET.SubElement(group_xml, "Id").text = group.Id
-            ET.SubElement(group_xml, "Name").text = group.Name
-            ET.SubElement(group_xml, "IsExpanded").text = str(group.IsExpanded).lower()
-            ET.SubElement(group_xml, "IsRemovable").text = str(group.IsRemovable).lower()
-
-        for contact in contacts:
-            #Guid, GGNumber, ShowName. MobilePhone. HomePhone, Email, WWWAddress, FirstName, LastName, Gender, Birth, City, Province, Groups, CurrentAvatar, Avatars
-            contact_xml = ET.SubElement(contacts_xml, "Contact")
-            ET.SubElement(contact_xml, "Guid").text = contact.Guid
-            ET.SubElement(contact_xml, "GGNumber").text = contact.GGNumber
-            ET.SubElement(contact_xml, "ShowName").text = contact.ShowName
-            contact_groups_xml = ET.SubElement(contact_xml, "Groups")
-            contact_groups = ET.fromstring(contact.Groups)
-            if contact.Groups:
-                for group in contact_groups.getchildren():
-                    ET.SubElement(contact_groups_xml, "GroupId").text = group.text
-            contact_avatars_xml = ET.SubElement(contact_xml, "Avatars")
-            ET.SubElement(contact_avatars_xml, "URL").text = ""
-            ET.SubElement(contact_xml, "FlagNormal").text = "true"
-
-        main_xml = ET.ElementTree(contactbook_xml)
-        main_xml.write(self.path, encoding="UTF-8")
-
-    def get_contacts_count(self):
-        return self.contacts_count
-
-    # alias config
-    def get_self_alias(self):
-        if os.path.exists(self.path2):
-            file = open(self.path2, "r")
-            alias = file.read()
-            file.close()
-            return alias
-        
-    def save_self_alias(self, alias):
-        file = open(self.path2, "w")
-        file.write(alias)
-        file.close()
-        
-#class GaduClientFactory(protocol.ClientFactory, protocol.ReconnectingClientFactory):
 class GaduClientFactory(protocol.ClientFactory):
     def __init__(self, config):
         self.config = config
 
     def buildProtocol(self, addr):
         # connect using current selected profile
-        #self.resetDelay()
         return GaduClient(self.config)
 
     def startedConnecting(self, connector):
@@ -175,8 +84,6 @@ class GaduClientFactory(protocol.ClientFactory):
 
     def clientConnectionLost(self, connector, reason):
         logger.info('Lost connection.  Reason: %s' % (reason))
-        #protocol.ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
-        #connector.connect()
         if self.config.contactsLoop != None:
             self.config.contactsLoop.stop()
             self.config.contactsLoop = None
@@ -189,7 +96,6 @@ class GaduClientFactory(protocol.ClientFactory):
 
     def clientConnectionFailed(self, connector, reason):
         logger.info('Connection failed. Reason: %s' % (reason))
-        #protocol.ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)
         if self.config.contactsLoop != None:
             self.config.contactsLoop.stop()
             self.config.contactsLoop = None
@@ -257,7 +163,6 @@ class SunshineConnection(telepathy.server.Connection,
             self.profile.onXmlAction = self.onXmlAction
             self.profile.onXmlEvent = self.onXmlEvent
             self.profile.onUserData = self.onUserData
-            #self.profile.onStatusNoticiesRecv = self.on_StatusNoticiesRecv
 
             self.password = str(parameters['password'])
 
@@ -271,10 +176,10 @@ class SunshineConnection(telepathy.server.Connection,
                 c = GaduContact.from_xml(contact_from_list)
                 try:
                     c.uin
-                    self.profile.addContact( c )
+                    self.profile.addContact(c)
                 except:
                     pass
-                
+
             for group_from_list in contacts_list['groups']:
                 g = GaduContactGroup.from_xml(group_from_list)
                 if g.Name:
@@ -369,12 +274,9 @@ class SunshineConnection(telepathy.server.Connection,
                 self.profile.exportLoop = None
                 
         logger.info("Disconnecting")
-        #self.profile.setMyState('NOT_AVAILABLE', self._personal_message)
         self.StatusChanged(telepathy.CONNECTION_STATUS_DISCONNECTED,
                 telepathy.CONNECTION_STATUS_REASON_REQUESTED)
         self.profile.disconnect()
-        #if reactor.running:
-        #    reactor.stop()
         os._exit(1)
 
     def GetInterfaces(self):
@@ -446,12 +348,12 @@ class SunshineConnection(telepathy.server.Connection,
         _success(channel._object_path)
         self.signal_new_channels([channel])
 
-    @async
+    #@async
     def updateContactsFile(self):
         """Method that updates contact file when it changes and in loop every 5 seconds."""
         self.configfile.make_contacts_file(self.profile.groups, self.profile.contacts)
 
-    @async
+    #@async
     def exportContactsFile(self):
         logger.info("Exporting contacts.")
         file = open(self.configfile.path, "r")
@@ -519,9 +421,9 @@ class SunshineConnection(telepathy.server.Connection,
     def on_contactsImported(self):
         logger.info("No contacts in the XML contacts file yet. Contacts imported.")
 
-        self.configfile.make_contacts_file(self.profile.groups, self.profile.contacts)
+        #self.configfile.make_contacts_file(self.profile.groups, self.profile.contacts)
         self.profile.contactsLoop = task.LoopingCall(self.updateContactsFile)
-        self.profile.contactsLoop.start(5.0)
+        self.profile.contactsLoop.start(5.0, True)
 
         if self._export_contacts == True:
             self.profile.exportLoop = task.LoopingCall(self.exportContactsFile)
@@ -543,9 +445,9 @@ class SunshineConnection(telepathy.server.Connection,
         if self.configfile.get_contacts_count() == 0:
             self.profile.importContacts(self.on_contactsImported)
         else:
-            self.configfile.make_contacts_file(self.profile.groups, self.profile.contacts)
+            #self.configfile.make_contacts_file(self.profile.groups, self.profile.contacts)
             self.profile.contactsLoop = task.LoopingCall(self.updateContactsFile)
-            self.profile.contactsLoop.start(5.0)
+            self.profile.contactsLoop.start(5.0, True)
             
             if self._export_contacts == True:
                 self.profile.exportLoop = task.LoopingCall(self.exportContactsFile)
@@ -580,15 +482,10 @@ class SunshineConnection(telepathy.server.Connection,
     def on_messageReceived(self, msg):
         if hasattr(msg.content.attrs, 'conference') and msg.content.attrs.conference != None:
             recipients = msg.content.attrs.conference.recipients
-            #recipients.append(self.profile.uin)
-            #print msg.sender
-            #print 'recipients:', recipients
             recipients = map(str, recipients)
             recipients.append(str(msg.sender))
-            #print 'recipients:', recipients
             recipients = sorted(recipients)
             conf_name = ', '.join(map(str, recipients))
-            #print 'conf_name:', conf_name
 
             #active handle for current writting contact
             ahandle_id = self.get_handle_id_by_name(telepathy.constants.HANDLE_TYPE_CONTACT,
@@ -602,7 +499,6 @@ class SunshineConnection(telepathy.server.Connection,
 
             #now we need to preapare a new room and make initial users in it
             room_handle_id = self.get_handle_id_by_name(telepathy.constants.HANDLE_TYPE_ROOM, str(conf_name))
-            #print 'room_handle_id:', room_handle_id
 
             handles = []
             
@@ -626,7 +522,6 @@ class SunshineConnection(telepathy.server.Connection,
                     room_handle, False)
 
             if handles:
-                #print handles
                 channel = self._channel_manager.channel_for_props(props,
                         signal=True, conversation=handles)
                 channel.MembersChanged('', handles, [], [], [],
@@ -687,8 +582,7 @@ class SunshineConnection(telepathy.server.Connection,
 
 
             message = "%s" % unicode(str(text).replace('\x00', '').replace('\r', ''))
-            #message = "%s" % unicode(str(msg.content.plain_message).replace('\x00', '').replace('\r', '').decode('windows-1250').encode('utf-8'))
-            #print 'message: ', message
+
             channel.Received(self._recv_id, timestamp, handle, type, 0, message)
             self._recv_id += 1
             
