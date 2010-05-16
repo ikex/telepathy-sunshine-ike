@@ -1,10 +1,13 @@
-telepathy-sunshine (0.1.8-1) UNRELEASED; urgency=low
+telepathy-sunshine (0.1.8-1) unstable; urgency=low
 
+  [ Krzysztof Klinikowski ]
   * New upstream release
+
+  [ Sjoerd Simons]
   * debian/patches/0001-Use-python-2.6.patch
     + Added, sunshine doesn't seem to want to work with python 2.5
 
- -- Sjoerd Simons <sjoerd@debian.org>  Sat, 08 May 2010 13:20:34 +0100
+ -- Sjoerd Simons <sjoerd@debian.org>  Sun, 16 May 2010 12:58:34 +0100
 
 telepathy-sunshine (0.1.7-1) unstable; urgency=low
 
