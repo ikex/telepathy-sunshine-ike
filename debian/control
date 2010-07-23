@@ -12,7 +12,7 @@ Build-Depends: debhelper (>= 7),
                  libdbus-glib-1-dev (>= 0.51),
                  python-twisted (>= 0.8.0),
                  python2.6
-Standards-Version: 3.8.3
+Standards-Version: 3.9.0
 Vcs-Git: git://git.debian.org/pkg-telepathy/telepathy-sunshine.git
 Vcs-Browser: http://git.debian.org/?p=pkg-telepathy/telepathy-sunshine.git
 Homepage: http://telepathy.freedesktop.org/wiki/
