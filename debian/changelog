@@ -1,8 +1,9 @@
 telepathy-sunshine (0.1.8-2) UNRELEASED; urgency=low
 
   * debian/control: Bump Standards-Version to 3.9.0 (no further changes)
+  * debian/lintian-overrides: Make lintian stop complaining about "Gadu Gadu"
 
- -- Laurent Bigonville <bigon@debian.org>  Fri, 23 Jul 2010 14:57:21 +0200
+ -- Laurent Bigonville <bigon@debian.org>  Fri, 23 Jul 2010 14:59:34 +0200
 
 telepathy-sunshine (0.1.8-1) unstable; urgency=low
 
