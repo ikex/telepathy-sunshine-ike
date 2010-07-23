@@ -3,8 +3,9 @@ telepathy-sunshine (0.1.8-2) UNRELEASED; urgency=low
   * debian/control: Bump Standards-Version to 3.9.0 (no further changes)
   * debian/lintian-overrides: Make lintian stop complaining about "Gadu Gadu"
   * source/format: Explicitly add 1.0 source format
+  * debian/watch: Add watch file
 
- -- Laurent Bigonville <bigon@debian.org>  Fri, 23 Jul 2010 15:31:35 +0200
+ -- Laurent Bigonville <bigon@debian.org>  Fri, 23 Jul 2010 15:34:15 +0200
 
 telepathy-sunshine (0.1.8-1) unstable; urgency=low
 
