@@ -7,9 +7,11 @@ telepathy-sunshine (0.1.8-2) UNRELEASED; urgency=low
   * debian/watch: Add watch file
 
   [ Jonny Lamb ]
-  * debian/control: Added myself to Uploaders.
+  * debian/control:
+    + Added myself to Uploaders.
+    + Updated package description. (Closes: #584643)
 
- -- Jonny Lamb <jonny@debian.org>  Fri, 06 Aug 2010 01:23:19 -0400
+ -- Jonny Lamb <jonny@debian.org>  Fri, 06 Aug 2010 01:23:47 -0400
 
 telepathy-sunshine (0.1.8-1) unstable; urgency=low
 
