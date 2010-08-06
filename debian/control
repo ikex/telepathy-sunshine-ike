@@ -3,7 +3,7 @@ Section: net
 Priority: optional
 XS-Python-Version: 2.6
 Maintainer: Debian Telepathy maintainers <pkg-telepathy-maintainers@lists.alioth.debian.org>
-Uploaders: Krzysztof Klinikowski <kkszysiu@gmail.com>, Sjoerd Simons <sjoerd@debian.org>
+Uploaders: Krzysztof Klinikowski <kkszysiu@gmail.com>, Sjoerd Simons <sjoerd@debian.org>, Jonny Lamb <jonny@debian.org>
 Build-Depends: debhelper (>= 7),
                  cdbs,
                  python-dbus,
