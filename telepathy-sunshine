@@ -6,11 +6,14 @@ import signal
 import os
 import sys
 import logging
+from twisted.python import log
 
 from twisted.internet import gtk2reactor
 gtk2reactor.install()
 
 from twisted.internet import reactor, protocol
+from twisted.internet.task import LoopingCall
+
 if sys.version_info < (2, 5):
     print >> sys.stderr, 'Critical: python >= 2.5 required. Exiting.'
     sys.exit(1)
@@ -30,6 +33,8 @@ from sunshine import SunshineDebug
 from sunshine.util.decorator import async
 
 logger = logging.getLogger('Sunshine')
+observer = log.PythonLoggingObserver(loggerName='Sunshine')
+observer.start()
 
 IDLE_TIMEOUT = 5000
 PROCESS_NAME = 'telepathy-sunshine'
@@ -42,7 +47,7 @@ if __name__ == '__main__':
     except Exception, e:
        logger.warning('Unable to set processName: %s" % e')
 
-    @async
+    #@async
     def quit():
         manager.quit()
         if reactor.running:

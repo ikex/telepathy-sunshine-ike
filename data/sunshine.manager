@@ -4,6 +4,7 @@ BusName = org.freedesktop.Telepathy.ConnectionManager.sunshine
 ObjectPath = /org/freedesktop/Telepathy/ConnectionManager/sunshine
 
 [Protocol gadugadu]
+Interfaces=org.freedesktop.Telepathy.Protocol.Interface.Avatars;org.freedesktop.Telepathy.Protocol.Interface.Presence;
 param-account = s required
 param-password = s required
 param-server = s
@@ -16,3 +17,13 @@ default-port = 8074
 default-export-contacts = false
 default-use-ssl = true
 default-use-specified-server = false
+SupportedAvatarMIMETypes=image/png;image/jpeg;image/gif;
+MinimumAvatarHeight=96
+RecommendedAvatarHeight=96
+MaximumAvatarHeight=256
+MinimumAvatarWidth=96
+RecommendedAvatarWidth=96
+MaximumAvatarWidth=256
+MaximumAvatarBytes=512000
+EnglishName=Gadu-Gadu
+Icon=im-gadugadu
