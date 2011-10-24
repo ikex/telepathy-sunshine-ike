@@ -1,3 +1,10 @@
+telepathy-sunshine (0.2.0-1) unstable; urgency=low
+
+  * New upstream release 
+  * Remove "Use python 2.6" patch
+
+ -- Lech Karol Pawłaszek (ike) <ike@szluug.org>  Mon, 24 Oct 2011 09:46:13 +0200
+
 telepathy-sunshine (0.1.8-2) unstable; urgency=low
 
   [ Laurent Bigonville ]

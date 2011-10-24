@@ -18,7 +18,7 @@ DEB_CONFIGURE_LIBEXECDIR := "\$${prefix}/lib/telepathy"
 DEB_CONFIGURE_EXTRA_FLAGS := --bindir=$(DEB_CONFIGURE_LIBEXECDIR) --disable-silent-rules
 
 
-include $(CURDIR)/debian/update-patches.mk
+# include $(CURDIR)/debian/update-patches.mk
 
 install/telepathy-sunshine::
 	find $(DEB_DESTDIR) -name '*.pyc' -exec rm '{}' ';'
