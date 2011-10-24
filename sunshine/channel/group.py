@@ -99,66 +99,15 @@ class SunshineGroupChannel(SunshineListChannel):
             contact = contact_handle.contact
             group = self._handle.group
 
+            #if len(ab.contacts.search_by_groups(group)) == 0:
+                #raise telepathy.NotAvailable("Can't delete non-empty group")
+
             self.delete_contact_from_group(group, contact, contact_handle)
 
     def Close(self):
         logger.debug("Deleting group %s" % self._handle.name)
         del self.conn.profile.groups[self._handle.name]
-#        ab = self._conn.msn_client.address_book
-#        group = self._handle.group
-#        ab.delete_group(group)
 
-#    def _filter_contact(self, contact):
-#        if contact.is_member(papyon.Membership.FORWARD):
-#            for group in contact.groups:
-#                if group.name.decode("utf-8") == self._handle.name:
-#                    return (True, False, False)
-#        return (False, False, False)
-#
-#    def on_addressbook_group_added(self, group):
-#        if group.name.decode("utf-8") == self._handle.name:
-#            self.AddMembers(self.__pending_add, None)
-#            self.__pending_add = []
-#            self.RemoveMembers(self.__pending_remove, None)
-#            self.__pending_remove = []
-#
-#    def on_addressbook_group_deleted(self, group):
-#        if group.name.decode("utf-8") == self._handle.name:
-#            self.Closed()
-#            self._conn.remove_channel(self)
-#
-#    def on_addressbook_group_contact_added(self, group, contact):
-#        group_name = group.name.decode("utf-8")
-#        if group_name == self._handle.name:
-#            handle = ButterflyHandleFactory(self._conn_ref(), 'contact',
-#                    contact.account, contact.network_id)
-#
-#            added = set()
-#            added.add(handle)
-#
-#            self.MembersChanged('', added, (), (), (), 0,
-#                    telepathy.CHANNEL_GROUP_CHANGE_REASON_NONE)
-#
-#            logger.debug("Contact %s added to group %s" %
-#                    (handle.name, group_name))
-#
-#    def on_addressbook_group_contact_deleted(self, group, contact):
-#        group_name = group.name.decode("utf-8")
-#        if group_name == self._handle.name:
-#            handle = ButterflyHandleFactory(self._conn_ref(), 'contact',
-#                    contact.account, contact.network_id)
-#
-#            removed = set()
-#            removed.add(handle)
-#
-#            self.MembersChanged('', (), removed, (), (), 0,
-#                    telepathy.CHANNEL_GROUP_CHANGE_REASON_NONE)
-#
-#            logger.debug("Contact %s removed from group %s" %
-#                    (handle.name, group_name))
-#
-
-    @async
     def add_contact_to_group(self, group, contact, contact_handle):
         group_name = group.Name
         if group_name == self._handle.name:
@@ -197,7 +146,6 @@ class SunshineGroupChannel(SunshineListChannel):
             logger.debug("Contact %s added to group %s" %
                     (handle.name, group_name))
 
-    @async
     def delete_contact_from_group(self, group, contact, contact_handle):
         group_name = group.Name
         if group_name == self._handle.name:

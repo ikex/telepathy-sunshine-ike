@@ -29,10 +29,13 @@ from sunshine.util.config import SunshineConfig
 from sunshine.lqsoft.pygadu.twisted_protocol import GaduClient
 from sunshine.lqsoft.pygadu.models import GaduProfile, GaduContact, GaduContactGroup
 
+from sunshine.lqsoft.gaduapi import *
+
 from twisted.internet import reactor, protocol
 from twisted.web.client import getPage
 from twisted.internet import task
 from twisted.python import log
+from twisted.internet import threads
 
 import dbus
 import telepathy
@@ -42,6 +45,7 @@ from sunshine.aliasing import SunshineAliasing
 from sunshine.avatars import SunshineAvatars
 from sunshine.handle import SunshineHandleFactory
 from sunshine.capabilities import SunshineCapabilities
+from sunshine.contacts_info import SunshineContactInfo
 from sunshine.contacts import SunshineContacts
 from sunshine.channel_manager import SunshineChannelManager
 from sunshine.util.decorator import async, stripHTML, unescape
@@ -49,6 +53,8 @@ from sunshine.util.decorator import async, stripHTML, unescape
 __all__ = ['GaduClientFactory', 'SunshineConnection']
 
 logger = logging.getLogger('Sunshine.Connection')
+observer = log.PythonLoggingObserver(loggerName='Sunshine.Connection')
+observer.start()
 
 #SSL
 ssl_support = False
@@ -84,25 +90,31 @@ class GaduClientFactory(protocol.ClientFactory):
 
     def clientConnectionLost(self, connector, reason):
         logger.info('Lost connection.  Reason: %s' % (reason))
-        if self.config.contactsLoop != None:
-            self.config.contactsLoop.stop()
-            self.config.contactsLoop = None
-        if self.config.exportLoop != None:
-            self.config.exportLoop.stop()
-            self.config.exportLoop = None
+        try:
+	    if self.config.contactsLoop != None:
+		self.config.contactsLoop.stop()
+		self.config.contactsLoop = None
+	    if self.config.exportLoop != None:
+		self.config.exportLoop.stop()
+		self.config.exportLoop = None
+	except:
+	    logger.info("Loops was not running")
         if reactor.running:
             reactor.stop()
             os._exit(1)
 
     def clientConnectionFailed(self, connector, reason):
         logger.info('Connection failed. Reason: %s' % (reason))
-        if self.config.contactsLoop != None:
-            self.config.contactsLoop.stop()
-            self.config.contactsLoop = None
-        if self.config.exportLoop != None:
-            self.config.exportLoop.stop()
-            self.config.exportLoop = None
-        if reactor.running:
+        try:
+	    if self.config.contactsLoop != None:
+		self.config.contactsLoop.stop()
+		self.config.contactsLoop = None
+	    if self.config.exportLoop != None:
+		self.config.exportLoop.stop()
+		self.config.exportLoop = None
+	except:
+	    logger.info("Loops was not running")
+	if reactor.running:
             reactor.stop()
             os._exit(1)
 
@@ -112,33 +124,12 @@ class SunshineConnection(telepathy.server.Connection,
         SunshineAliasing,
         SunshineAvatars,
         SunshineCapabilities,
+        SunshineContactInfo,
         SunshineContacts
         ):
 
-    _secret_parameters = set([
-            'password'
-            ])
-    _mandatory_parameters = {
-            'account' : 's',
-            'password' : 's'
-            }
-    _optional_parameters = {
-            'server' : 's',
-            'port' : 'q',
-            'export-contacts' : 'b',
-            'use-ssl' : 'b',
-            'use-specified-server' : 'b'
-            }
-    _parameter_defaults = {
-            'server' : '91.197.13.67',
-            'port' : 8074,
-            'export-contacts' : False,
-            'use-ssl' : True,
-            'use-specified-server' : False
-            }
-
-    def __init__(self, manager, parameters):
-        self.check_parameters(parameters)
+    def __init__(self, protocol, manager, parameters):
+        protocol.check_parameters(parameters)
 
         try:
             account = unicode(parameters['account'])
@@ -164,8 +155,6 @@ class SunshineConnection(telepathy.server.Connection,
             self.profile.onXmlEvent = self.onXmlEvent
             self.profile.onUserData = self.onUserData
 
-            self.password = str(parameters['password'])
-
             #lets try to make file with contacts etc ^^
             self.configfile = SunshineConfig(int(parameters['account']))
             self.configfile.check_dirs()
@@ -188,7 +177,10 @@ class SunshineConnection(telepathy.server.Connection,
             logger.info("We have %s contacts in file." % (self.configfile.get_contacts_count()))
             
             self.factory = GaduClientFactory(self.profile)
-            self._channel_manager = SunshineChannelManager(self)
+            if check_requirements() == True:
+                self.ggapi = GG_Oauth(self.profile.uin, parameters['password'])
+            
+            self._channel_manager = SunshineChannelManager(self, protocol)
 
             self._recv_id = 0
             self._conf_id = 0
@@ -197,12 +189,14 @@ class SunshineConnection(telepathy.server.Connection,
             self.profile.contactsLoop = None
             
             # Call parent initializers
-            telepathy.server.Connection.__init__(self, 'gadugadu', account, 'sunshine')
+            telepathy.server.Connection.__init__(self, 'gadugadu', account, 'sunshine', protocol)
             telepathy.server.ConnectionInterfaceRequests.__init__(self)
             SunshinePresence.__init__(self)
             SunshineAvatars.__init__(self)
-            SunshineContacts.__init__(self)
             SunshineCapabilities.__init__(self)
+            if check_requirements() == True:
+                SunshineContactInfo.__init__(self)
+            SunshineContacts.__init__(self)
             
             self.updateCapabilitiesCalls()
 
@@ -214,11 +208,20 @@ class SunshineConnection(telepathy.server.Connection,
             self._initial_personal_message = None
             self._personal_message = ''
 
+            self.conn_checker = task.LoopingCall(self.connection_checker)
+            self.conn_checker.start(5.0, False)
+
             logger.info("Connection to the account %s created" % account)
         except Exception, e:
             import traceback
             logger.exception("Failed to create Connection")
             raise
+
+    def connection_checker(self):
+        if len(self.manager._connections) == 0:
+            logger.info("Connection checker killed CM")
+            #self.quit()
+            reactor.stop()
 
     @property
     def manager(self):
@@ -272,12 +275,16 @@ class SunshineConnection(telepathy.server.Connection,
             if self.profile.exportLoop:
                 self.profile.exportLoop.stop()
                 self.profile.exportLoop = None
-                
-        logger.info("Disconnecting")
+        
+        #if self._status == telepathy.CONNECTION_STATUS_DISCONNECTED:
+        #    self.profile.disconnect()
+        #    self.factory.disconnect()
+        
         self.StatusChanged(telepathy.CONNECTION_STATUS_DISCONNECTED,
                 telepathy.CONNECTION_STATUS_REASON_REQUESTED)
         self.profile.disconnect()
-        os._exit(1)
+
+        logger.info("Disconnecting")
 
     def GetInterfaces(self):
         return self._interfaces
@@ -349,18 +356,23 @@ class SunshineConnection(telepathy.server.Connection,
         self.signal_new_channels([channel])
 
     #@async
+    #@deferred
     def updateContactsFile(self):
         """Method that updates contact file when it changes and in loop every 5 seconds."""
-        self.configfile.make_contacts_file(self.profile.groups, self.profile.contacts)
+        reactor.callInThread(self.configfile.make_contacts_file, self.profile.groups, self.profile.contacts)
+        #self.configfile.make_contacts_file(self.profile.groups, self.profile.contacts)
 
     #@async
+    #@deferred
     def exportContactsFile(self):
         logger.info("Exporting contacts.")
+        # TODO: make fully non-blocking
         file = open(self.configfile.path, "r")
         contacts_xml = file.read()
         file.close()
         if len(contacts_xml) != 0:
-            self.profile.exportContacts(contacts_xml)
+	    reactor.callInThread(self.profile.exportContacts, contacts_xml)
+            #self.profile.exportContacts(contacts_xml)
 
     @async
     def makeTelepathyContactsChannel(self):
@@ -382,7 +394,7 @@ class SunshineConnection(telepathy.server.Connection,
 
     def getServerAdress(self, uin):
         logger.info("Fetching GG server adress.")
-        url = 'http://appmsg.gadu-gadu.pl/appsvc/appmsg_ver10.asp?fmnumber=%s&lastmsg=0&version=10.0.0.10784' % (str(uin))
+        url = 'http://appmsg.gadu-gadu.pl/appsvc/appmsg_ver10.asp?fmnumber=%s&lastmsg=0&version=10.1.1.11119' % (str(uin))
         d = getPage(url, timeout=10)
         d.addCallback(self.on_server_adress_fetched, uin)
         d.addErrback(self.on_server_adress_fetched_failed, uin)
@@ -415,8 +427,11 @@ class SunshineConnection(telepathy.server.Connection,
             self.getServerAdress(uin)
 
     def on_server_adress_fetched_failed(self, error, uin):
-        logger.info("Failed to get page with server IP adress.")
-        self.getServerAdress(uin)
+        logger.error("Failed to get page with server IP adress.")
+        self.StatusChanged(telepathy.CONNECTION_STATUS_DISCONNECTED,
+                telepathy.CONNECTION_STATUS_REASON_NETWORK_ERROR)
+        self._manager.disconnected(self)
+        #self.factory.disconnect()
 
     def on_contactsImported(self):
         logger.info("No contacts in the XML contacts file yet. Contacts imported.")
@@ -471,8 +486,9 @@ class SunshineConnection(telepathy.server.Connection,
                 telepathy.CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED)
         reactor.stop()
 
-    @async
+    #@async
     def on_updateContact(self, contact):
+        #handle = SunshineHandleFactory(self, 'contact', str(contact.uin))
         handle_id = self.get_handle_id_by_name(telepathy.constants.HANDLE_TYPE_CONTACT, str(contact.uin))
         handle = self.handle(telepathy.constants.HANDLE_TYPE_CONTACT, handle_id)
         logger.info("Method on_updateContact called, status changed for UIN: %s, id: %s, status: %s, description: %s" % (contact.uin, handle.id, contact.status, contact.get_desc()))
@@ -583,7 +599,7 @@ class SunshineConnection(telepathy.server.Connection,
 
             message = "%s" % unicode(str(text).replace('\x00', '').replace('\r', ''))
 
-            channel.Received(self._recv_id, timestamp, handle, type, 0, message)
+            channel.signalTextReceived(self._recv_id, timestamp, handle, type, 0, handle.name, message)
             self._recv_id += 1
             
     def onTypingNotification(self, data):
@@ -637,3 +653,7 @@ class SunshineConnection(telepathy.server.Connection,
 
     def onUserData(self, data):
         logger.info("UserData: %s" % str(data))
+        #for user in data.users:
+        #    print user.uin
+        #    for attr in user.attr:
+        #        print "%s - %s" % (attr.name, attr.value)

@@ -29,6 +29,8 @@ __all__ = ['SunshineContacts']
 
 logger = logging.getLogger('Sunshine.Contacts')
 
+CONNECTION_INTERFACE_CONTACT_INFO = 'org.freedesktop.Telepathy.Connection.Interface.ContactInfo'
+
 class SunshineContacts(telepathy.server.ConnectionInterfaceContacts):
 
     attributes = {
@@ -37,7 +39,8 @@ class SunshineContacts(telepathy.server.ConnectionInterfaceContacts):
         telepathy.CONNECTION_INTERFACE_ALIASING : 'alias',
         telepathy.CONNECTION_INTERFACE_AVATARS : 'token',
         telepathy.CONNECTION_INTERFACE_CAPABILITIES : 'caps',
-        telepathy.CONNECTION_INTERFACE_CONTACT_CAPABILITIES : 'capabilities'
+        telepathy.CONNECTION_INTERFACE_CONTACT_CAPABILITIES : 'capabilities',
+        CONNECTION_INTERFACE_CONTACT_INFO : 'info'
         }
 
     def __init__(self):
@@ -77,7 +80,9 @@ class SunshineContacts(telepathy.server.ConnectionInterfaceContacts):
             telepathy.CONNECTION_INTERFACE_CAPABILITIES:
                 lambda x: self.GetCapabilities(x).items(),
             telepathy.CONNECTION_INTERFACE_CONTACT_CAPABILITIES:
-                lambda x: self.GetContactCapabilities(x).items()
+                lambda x: self.GetContactCapabilities(x).items(),
+            CONNECTION_INTERFACE_CONTACT_INFO:
+                lambda x: self.GetContactInfo(x).items()
             }
 
         #Hold handles if needed

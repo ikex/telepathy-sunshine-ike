@@ -16,6 +16,7 @@ class GaduProfile(object):
         self.__contacts = {}
         self.__groups = {}
         self.__connection = None
+        self.handler = None
         self.contactsLoop = None
         self.exportLoop = None
         
@@ -71,7 +72,8 @@ class GaduProfile(object):
         return self.__connection is not None
 
     def disconnect(self):
-        self.__connection.loseConnection()
+        print 'Protocol disconnecting'
+        self.handler.transport.loseConnection()
 
     def addContact(self, contact):
         #if self.__contacts.has_key(contact.uin):
@@ -109,7 +111,7 @@ class GaduProfile(object):
 
     def setMyState(self, new_state, new_description=''):
         if not self.connected:
-            raise RuntimeError("You need to be connected, to import contact list from the server.")
+            raise RuntimeError("You need to be connected, to change your status or presence.")
 
         self.__connection.changeStatus(new_state, new_description)
 
@@ -134,7 +136,7 @@ class GaduProfile(object):
             raise RuntimeError("You need to be connected, to import contact list from the server.")
 
         def parse_xml(data):
-            #print zlib.decompress(data)
+            print zlib.decompress(data)
             book = ET.fromstring(zlib.decompress(data))
             self._flushContacts()
             
@@ -171,9 +173,6 @@ class GaduProfile(object):
     def _flushContacts(self):
         self.__contacts = {}
         self.__groups = {}
-
-    def disconnect(self):
-        self.__connection.transport.loseConnection()
 
     # stuff that should be implemented by user
     def onCreditialsNeeded(self, *args, **kwargs):

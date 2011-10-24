@@ -22,8 +22,11 @@ import dbus
 
 import telepathy
 
-from telepathy._generated.Connection_Interface_Contact_Capabilities \
-     import ConnectionInterfaceContactCapabilities
+try:
+    from telepathy.server import ConnectionInterfaceContactCapabilities
+except:
+    from telepathy._generated.Connection_Interface_Contact_Capabilities \
+        import ConnectionInterfaceContactCapabilities
 
 from sunshine.util.decorator import async
 from sunshine.handle import SunshineHandleFactory
@@ -84,21 +87,21 @@ class SunshineCapabilities(telepathy.server.ConnectionInterfaceCapabilities,
         return telepathy.server.ConnectionInterfaceCapabilities.\
             AdvertiseCapabilities(self, add, remove)
 
-
     def GetContactCapabilities(self, handles):
-        print handles
         if 0 in handles:
             raise telepathy.InvalidHandle('Contact handle list contains zero')
 
-        #a{ua(a{sv}as)}
         ret = dbus.Dictionary({}, signature='ua(a{sv}as)')
         for i in handles:
-            print i
             handle = self.handle(telepathy.HANDLE_TYPE_CONTACT, i)
+            # If the handle has no contact capabilities yet then it
+            # won't be in the dict. It's fair to return an empty list
+            # here for its contact caps.
             if handle in self._contact_caps:
-                ret[handle] = dbus.Array(self._contact_caps[handle], signature='(a{sv}as)')
+		ret[handle] = dbus.Array(self._contact_caps[handle], signature='(a{sv}as)')
             else:
-                ret[handle] = []
+                ret[handle] = dbus.Array([], signature='(a{sv}as)')
+
         return ret
 
     def UpdateCapabilities(self, caps):

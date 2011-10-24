@@ -16,6 +16,7 @@ class GaduClient(Protocol):
     
     def __init__(self, profile):
         self.user_profile = profile # the user connected to this client
+        self.user_profile.handler = self
         self.doLogin = Deferred()
         self.doLogin.addCallbacks(profile._creditials, self._onInvalidCreditials)
         self.doLogin.addCallbacks(self._doLogin, self._onLoginFailed)
@@ -31,6 +32,7 @@ class GaduClient(Protocol):
         self.__pingThread = None
 
         self.msg_id = 0
+        self.clistversion = 0
 
     def connectionMade(self):
         self.__buffer = ''        
@@ -148,13 +150,13 @@ class GaduClient(Protocol):
         self.msg_id += 1
         self.user_profile.onMessageReceived(msg)
 
-        self.sendMsgAck(self.msg_id)
+        self.sendMsgAck(msg.seq)
 
     def _handleMessageAckPacket(self, msg):
         print "MSG_Status=%x, recipient=%d, seq=%d" % (msg.msg_status, msg.recipient, msg.seq) 
 
     def _handleTypingNotifyPacket(self, data):
-        #print "MSG Typing Notify uin=%d, type=%d" % (data.uin, data.type)
+        print "MSG Typing Notify uin=%d, type=%d" % (data.uin, data.type)
         self.user_profile.onTypingNotification(data)
 
     def _handleDisconnectPacket(self, msg):
@@ -186,19 +188,24 @@ class GaduClient(Protocol):
 
     def exportContactsList(self, xml):
         klass = Resolver.by_name('ULRequestPacket')
-        i = 0
+        #i = 0
         
-        while len(xml) != 0:
-            i = i +1
-            batch, xml = xml[:2048], xml[2048:]
-            if(i == 1):
-                type = ULRequestPacket.TYPE.PUT
-            else:
-                type = ULRequestPacket.TYPE.PUT_MORE
-            self._sendPacket(klass(type = type, data = batch))
+        #while len(xml) != 0:
+        #    i = i +1
+        #    batch, xml = xml[:2048], xml[2048:]
+        #    if(i == 1):
+        #        type = ULRequestPacket.TYPE.PUT
+        #    else:
+        #        type = ULRequestPacket.TYPE.PUT_MORE
+        #    self._sendPacket(klass(type = type, data = batch))
+        
+        self.clistversion = self.clistversion+1
+        
+        self._sendPacket(klass(type = ULRequestPacket.TYPE.PUT, version = self.clistversion, data = xml))
         self._log("All contacts exported.")
 
     def sendPing(self):
+        print '[PING]'
         if self.firstPing != True:
             self._sendPacket( Resolver.by_name('PingPacket')() )
         self.firstPing = False
@@ -273,8 +280,6 @@ class GaduClient(Protocol):
     def changeStatus(self, status, desc=''):
         change_status_class = Resolver.by_name('ChangeStatusPacket')
 
-        print ChangeStatusPacket.STATUS.FFC
-
         if status == 'NOT_AVAILABLE':
             if desc == '' or desc == None:
                 gg_status = change_status_class.STATUS.NOT_AVAILABLE
@@ -317,17 +322,21 @@ class GaduClient(Protocol):
         return True
 
     def _handleULReplyPacket(self, msg):
-        if msg.is_get:
+        if msg.type == 0x00:
             if not self.importrq_cb:
                 self._warn("Unexpected UL_GET reply")
                 return
-                
-            self.import_buf += msg.data
 
-            if msg.is_final:
-                cb = self.importrq_cb
-                self.importrq_cb = None
-                cb.callback(self.import_buf)
+            self.import_buf = msg.data
+
+            cb = self.importrq_cb
+            self.importrq_cb = None
+            self.clistversion = msg.version
+            cb.callback(self.import_buf)
+        elif msg.type == 0x10:
+            self.clistversion = msg.version
+        elif msg.type == 0x12:
+            self._log("UL_PUT ivalid contactlist version")
         else:
             self._log("UL_PUT reply")
         

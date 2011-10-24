@@ -54,7 +54,7 @@ class SunshineHandle(telepathy.server.Handle):
     def __new__(cls, connection, *args):
         key = (cls, connection._account[0], args)
         if key not in cls.instances.keys():
-            instance = object.__new__(cls, connection, *args)
+            instance = object.__new__(cls)
 	    #instance = super(object, self).__init__(cls, connection, *args)
             cls.instances[key] = instance # TRICKY: instances is a weakdict
             return instance, True
@@ -95,7 +95,7 @@ class SunshineSelfHandle(SunshineHandle):
 
 class SunshineContactHandle(SunshineHandle):
     #TODO: GG using just UIN to indenrify user so we need just contact_uin instead of contact_account and contact_network)
-    def __init__(self, connection, id, contact_account, contact_network):
+    def __init__(self, connection, id, contact_account, contact_network=None):
         handle_type = telepathy.HANDLE_TYPE_CONTACT
         handle_name = str(contact_account)
         self.account = str(contact_account)

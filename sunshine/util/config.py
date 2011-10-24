@@ -3,6 +3,8 @@ import logging
 
 import xml.etree.ElementTree as ET
 
+from twisted.internet import defer
+
 __all__ = ['SunshineConfig']
 
 logger = logging.getLogger('Sunshine.Config')
@@ -35,6 +37,7 @@ class SunshineConfig(object):
         self.path2 = os.path.join(path, 'alias')
         return os.path.join(path, 'profile.xml')
 
+    #@defer.inlineCallbacks
     def get_contacts(self):
         self.roster = {'groups':[], 'contacts':[]}
         try:
@@ -51,9 +54,11 @@ class SunshineConfig(object):
 
             return self.roster
         except:
+	    logger.error("Problem with contacts file parsing.")
             self.contacts_count = 0
         return self.roster
 
+    
     def make_contacts_file(self, groups, contacts):
         contactbook_xml = ET.Element("ContactBook")
 
