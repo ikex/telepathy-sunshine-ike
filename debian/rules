@@ -22,3 +22,4 @@ DEB_CONFIGURE_EXTRA_FLAGS := --bindir=$(DEB_CONFIGURE_LIBEXECDIR) --disable-sile
 
 install/telepathy-sunshine::
 	find $(DEB_DESTDIR) -name '*.pyc' -exec rm '{}' ';'
+	find $(DEB_DESTDIR) -name '*.pyo' -exec rm '{}' ';'
