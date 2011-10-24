@@ -22,7 +22,7 @@ Architecture: all
 Provides: telepathy-connection-manager
 Depends: ${shlibs:Depends}, ${misc:Depends}, python, python-dbus, python-gobject, python-telepathy (>= 0.15.17), python-twisted (>= 0.8.2)
 XB-Python-Version: ${python:Versions}
-Description: Gadu Gadu connection manager for Telepathy
- telepathy-sunshine is a full-featured Gadu Gadu connection manager
- for the Telepathy real time communications framework. Gadu Gadu is an
+Description: Gadu-Gadu connection manager for Telepathy
+ telepathy-sunshine is a full-featured Gadu-Gadu connection manager
+ for the Telepathy real time communications framework. Gadu-Gadu is an
  instant messaging protocol, most common in Poland.

@@ -2,10 +2,13 @@ telepathy-sunshine (0.2.0-1) unstable; urgency=low
 
   * New upstream release 
   * Remove "Use python 2.6" patch
-  * debian/control: Bump Standards-Version to 3.9.2 (no further changes)
-  * debian/control: Added python dependency (and removed python2.6 dependency)
-  * debian/rules: Remove pyo files generated during build
-  * debian/rules: Removed simple-patchsys.mk (due to Lintian warning)
+  * debian/control: 
+    + Bump Standards-Version to 3.9.2 (no further changes),
+    + Added python dependency (and removed python2.6 dependency),
+    + Updated package description. (Closes: #642358)
+  * debian/rules: 
+    + Remove pyo files generated during build,
+    + Removed simple-patchsys.mk (due to Lintian warning).
 
  -- Lech Karol Pawłaszek (ike) <ike@szluug.org>  Mon, 24 Oct 2011 09:46:13 +0200
 
